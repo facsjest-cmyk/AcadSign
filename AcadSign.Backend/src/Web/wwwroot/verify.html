@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AcadSign - Vérification de Document</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 500px;
+            width: 100%;
+            padding: 40px;
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo h1 {
+            color: #667eea;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        .title {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .title h2 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .title p {
+            color: #666;
+            font-size: 14px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .btn-verify {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .btn-verify:hover {
+            transform: translateY(-2px);
+        }
+        .btn-verify:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .lang-switch {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .lang-switch button {
+            background: none;
+            border: none;
+            color: #667eea;
+            cursor: pointer;
+            margin: 0 10px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .lang-switch button:hover {
+            text-decoration: underline;
+        }
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+        }
+        .result.valid {
+            background: #d4edda;
+            border: 2px solid #28a745;
+            color: #155724;
+        }
+        .result.invalid {
+            background: #f8d7da;
+            border: 2px solid #dc3545;
+            color: #721c24;
+        }
+        .result h3 {
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+        .result p {
+            margin-bottom: 8px;
+        }
+        .info-section {
+            margin: 20px 0;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+        }
+        .info-section h4 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .legal-notice {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            font-style: italic;
+            border-radius: 5px;
+        }
+        .legal-notice.error {
+            background: #ffe7e7;
+            border-left-color: #dc3545;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        .btn-download-report {
+            width: 100%;
+            margin-top: 20px;
+            padding: 15px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .btn-download-report:hover {
+            transform: translateY(-2px);
+        }
+        .loading {
+            text-align: center;
+            color: #667eea;
+            margin-top: 20px;
+            display: none;
+        }
+        @media (max-width: 600px) {
+            .container { padding: 20px; }
+            .logo h1 { font-size: 24px; }
+            .title h2 { font-size: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h1>🎓 AcadSign</h1>
+        </div>
+        
+        <div class="title">
+            <h2 id="page-title">Vérification de Document Académique</h2>
+            <p id="page-subtitle">Vérifiez l'authenticité d'un document signé électroniquement</p>
+        </div>
+        
+        <form id="verify-form">
+            <div class="form-group">
+                <label for="document-id" id="label-doc-id">ID du Document</label>
+                <input type="text" id="document-id" placeholder="Entrez l'ID du document" required>
+            </div>
+            
+            <button type="submit" class="btn-verify" id="btn-verify">Vérifier</button>
+        </form>
+        
+        <div class="lang-switch">
+            <button onclick="switchLang('fr')">Français</button>
+            |
+            <button onclick="switchLang('ar')">العربية</button>
+        </div>
+        
+        <div id="loading" class="loading">⏳ Vérification en cours...</div>
+        <div id="result" class="result"></div>
+    </div>
+    
+    <script>
+        const translations = {
+            fr: {
+                title: "Vérification de Document Académique",
+                subtitle: "Vérifiez l'authenticité d'un document signé électroniquement",
+                labelDocId: "ID du Document",
+                btnVerify: "Vérifier",
+                placeholder: "Entrez l'ID du document",
+                loading: "⏳ Vérification en cours...",
+                validTitle: "✅ Document Authentique",
+                invalidTitle: "❌ Document Non Authentique",
+                type: "Type",
+                issuedBy: "Émis par",
+                student: "Étudiant",
+                signedAt: "Signé le",
+                error: "Erreur lors de la vérification"
+            },
+            ar: {
+                title: "التحقق من الوثيقة الأكاديمية",
+                subtitle: "تحقق من صحة الوثيقة الموقعة إلكترونياً",
+                labelDocId: "معرف الوثيقة",
+                btnVerify: "تحقق",
+                placeholder: "أدخل معرف الوثيقة",
+                loading: "⏳ جاري التحقق...",
+                validTitle: "✅ وثيقة أصلية",
+                invalidTitle: "❌ وثيقة غير أصلية",
+                type: "النوع",
+                issuedBy: "صادر عن",
+                student: "الطالب",
+                signedAt: "تاريخ التوقيع",
+                error: "خطأ في التحقق"
+            }
+        };
+        
+        let currentLang = 'fr';
+        
+        function switchLang(lang) {
+            currentLang = lang;
+            const t = translations[lang];
+            document.getElementById('page-title').textContent = t.title;
+            document.getElementById('page-subtitle').textContent = t.subtitle;
+            document.getElementById('label-doc-id').textContent = t.labelDocId;
+            document.getElementById('btn-verify').textContent = t.btnVerify;
+            document.getElementById('document-id').placeholder = t.placeholder;
+            document.getElementById('loading').textContent = t.loading;
+            
+            if (lang === 'ar') {
+                document.body.style.direction = 'rtl';
+            } else {
+                document.body.style.direction = 'ltr';
+            }
+        }
+        
+        document.getElementById('verify-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const documentId = document.getElementById('document-id').value.trim();
+            
+            if (!documentId) return;
+            
+            const t = translations[currentLang];
+            const btnVerify = document.getElementById('btn-verify');
+            const loadingDiv = document.getElementById('loading');
+            const resultDiv = document.getElementById('result');
+            
+            btnVerify.disabled = true;
+            loadingDiv.style.display = 'block';
+            resultDiv.style.display = 'none';
+            
+            try {
+                const response = await fetch(`/api/v1/documents/verify/${documentId}`);
+                const data = await response.json();
+                
+                resultDiv.style.display = 'block';
+                loadingDiv.style.display = 'none';
+                
+                if (data.isValid) {
+                    resultDiv.className = 'result valid';
+                    resultDiv.innerHTML = `
+                        <h3>${t.validTitle}</h3>
+                        
+                        <div class="info-section">
+                            <h4>${currentLang === 'fr' ? 'Informations du Document' : 'معلومات الوثيقة'}</h4>
+                            <p><strong>${t.type}:</strong> ${data.documentType || 'N/A'}</p>
+                            <p><strong>${t.issuedBy}:</strong> ${data.issuedBy || 'N/A'}</p>
+                            <p><strong>${t.student}:</strong> ${data.studentName || 'N/A'}</p>
+                            <p><strong>${t.signedAt}:</strong> ${data.signedAt ? new Date(data.signedAt).toLocaleString() : 'N/A'}</p>
+                        </div>
+                        
+                        <div class="info-section">
+                            <h4>${currentLang === 'fr' ? 'Certificat de Signature' : 'شهادة التوقيع'}</h4>
+                            <p>✅ ${currentLang === 'fr' ? 'Valide jusqu\'au' : 'صالح حتى'}: ${data.certificateValidUntil ? new Date(data.certificateValidUntil).toLocaleDateString() : 'N/A'}</p>
+                            <p>✅ ${currentLang === 'fr' ? 'Émis par' : 'صادر عن'}: ${data.certificateIssuer || 'Barid Al-Maghrib PKI'}</p>
+                            <p>✅ ${currentLang === 'fr' ? 'Numéro de série' : 'الرقم التسلسلي'}: ${data.certificateSerial || 'N/A'}</p>
+                        </div>
+                        
+                        <div class="info-section">
+                            <h4>${currentLang === 'fr' ? 'Signature Électronique' : 'التوقيع الإلكتروني'}</h4>
+                            <p>✅ ${currentLang === 'fr' ? 'Algorithme' : 'الخوارزمية'}: ${data.signatureAlgorithm || 'SHA256withRSA'}</p>
+                            <p>✅ ${currentLang === 'fr' ? 'Horodatage' : 'الطابع الزمني'}: ${data.signedAt ? new Date(data.signedAt).toLocaleString() : 'N/A'} (RFC 3161)</p>
+                            <p>✅ ${currentLang === 'fr' ? 'Autorité d\'horodatage' : 'سلطة الطابع الزمني'}: ${data.timestampAuthority || 'Barid Al-Maghrib TSA'}</p>
+                        </div>
+                        
+                        <div class="legal-notice">
+                            <p>${currentLang === 'fr' ? 'Ce document est légalement valide au Maroc conformément à la Loi 43-20.' : 'هذه الوثيقة صالحة قانونياً في المغرب وفقاً للقانون 43-20.'}</p>
+                        </div>
+                        
+                        <button class="btn-download-report" onclick="downloadReport('${documentId}')">
+                            📄 ${currentLang === 'fr' ? 'Télécharger le Rapport de Vérification (PDF)' : 'تحميل تقرير التحقق (PDF)'}
+                        </button>
+                    `;
+                } else {
+                    const isRevoked = data.certificateStatus === 'REVOKED';
+                    resultDiv.className = isRevoked ? 'result revoked' : 'result invalid';
+                    
+                    if (isRevoked) {
+                        resultDiv.innerHTML = `
+                            <h3>❌ ${currentLang === 'fr' ? 'Certificat Révoqué' : 'شهادة ملغاة'}</h3>
+                            
+                            <div class="warning">
+                                <p>⚠️ ${currentLang === 'fr' ? 'Le certificat utilisé pour signer ce document a été révoqué.' : 'تم إلغاء الشهادة المستخدمة لتوقيع هذه الوثيقة.'}</p>
+                            </div>
+                            
+                            <div class="info-section">
+                                <h4>${currentLang === 'fr' ? 'Détails' : 'التفاصيل'}</h4>
+                                <p><strong>${currentLang === 'fr' ? 'Date de révocation' : 'تاريخ الإلغاء'}:</strong> ${data.revokedAt ? new Date(data.revokedAt).toLocaleDateString() : 'N/A'}</p>
+                            </div>
+                            
+                            <div class="legal-notice error">
+                                <p>${currentLang === 'fr' ? 'Ce document n\'est plus valide.' : 'هذه الوثيقة لم تعد صالحة.'}</p>
+                            </div>
+                        `;
+                    } else {
+                        resultDiv.innerHTML = `
+                            <h3>${t.invalidTitle}</h3>
+                            
+                            <div class="warning">
+                                <p>⚠️ ${currentLang === 'fr' ? 'La signature électronique de ce document est invalide.' : 'التوقيع الإلكتروني لهذه الوثيقة غير صالح.'}</p>
+                            </div>
+                            
+                            <div class="info-section">
+                                <h4>${currentLang === 'fr' ? 'Raison' : 'السبب'}</h4>
+                                <p>${data.error || data.reason || (currentLang === 'fr' ? 'Document non trouvé ou invalide' : 'الوثيقة غير موجودة أو غير صالحة')}</p>
+                            </div>
+                            
+                            <div class="legal-notice error">
+                                <p>${currentLang === 'fr' ? 'Ce document ne doit PAS être considéré comme authentique.' : 'يجب عدم اعتبار هذه الوثيقة أصلية.'}</p>
+                            </div>
+                        `;
+                    }
+                }
+            } catch (error) {
+                resultDiv.style.display = 'block';
+                loadingDiv.style.display = 'none';
+                resultDiv.className = 'result invalid';
+                resultDiv.innerHTML = `
+                    <h3>${t.invalidTitle}</h3>
+                    <p>${t.error}</p>
+                `;
+            } finally {
+                btnVerify.disabled = false;
+            }
+        });
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const docId = urlParams.get('id');
+        if (docId) {
+            document.getElementById('document-id').value = docId;
+        }
+        
+        function downloadReport(documentId) {
+            window.open(`/api/v1/documents/verify/${documentId}/report`, '_blank');
+        }
+    </script>
+</body>
+</html>

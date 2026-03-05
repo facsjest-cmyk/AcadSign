@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: acadsign-postgres
+    environment:
+      POSTGRES_DB: acadsign
+      POSTGRES_USER: acadsign_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U acadsign_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: acadsign-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  seq:
+    image: datalust/seq:2024.3
+    container_name: acadsign-seq
+    environment:
+      ACCEPT_EULA: Y
+    ports:
+      - "5341:80"
+    volumes:
+      - seq_data:/data
+
+  backend:
+    image: mcr.microsoft.com/devcontainers/dotnet:1.0-10.0
+    container_name: acadsign-backend-dev
+    volumes:
+      - ./AcadSign.Backend:/workspace:cached
+    command: sleep infinity
+    depends_on:
+      - postgres
+      - minio
+      - seq
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+
+volumes:
+  postgres_data:
+  minio_data:
+  seq_data:

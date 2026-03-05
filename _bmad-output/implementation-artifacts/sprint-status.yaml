@@ -1,0 +1,115 @@
+# generated: 2026-03-04
+# project: e-sign
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: /Users/macbookpro/e-sign/_bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-03-04
+project: e-sign
+project_key: NOKEY
+tracking_system: file-system
+story_location: /Users/macbookpro/e-sign/_bmad-output/implementation-artifacts
+
+development_status:
+  epic-1: in-progress
+  1-1-initialiser-backend-api-avec-clean-architecture-template: review
+  1-2-initialiser-desktop-app-avec-wpf-mvvm-template: review
+  1-3-configurer-infrastructure-conteneurisee-postgresql-minio-seq: review
+  1-4-configurer-dev-containers-pour-developpement: review
+  epic-1-retrospective: optional
+
+  epic-2: in-progress
+  2-1-configurer-openiddict-pour-oauth-2-0: review
+  2-2-implementer-client-credentials-flow-sis-laravel-backend: review
+  2-3-implementer-authorization-code-pkce-flow-desktop-app-backend: review
+  2-4-implementer-rbac-admin-registrar-auditor-api-client: review
+  2-5-configurer-chiffrement-pii-avec-asp-net-data-protection-api: review
+  2-6-implementer-stockage-securise-tokens-desktop-app-windows-credential-manager: review
+  epic-2-retrospective: optional
+
+  epic-3: in-progress
+  3-1-configurer-questpdf-pour-generation-pdf-bilingue: review
+  3-2-implementer-generation-des-4-types-de-documents: review
+  3-3-implementer-generation-et-embedding-de-qr-codes: review
+  3-4-configurer-minio-s3-storage-avec-chiffrement-sse-kms: review
+  3-5-implementer-generation-de-pre-signed-urls: review
+  3-6-implementer-template-management-upload-versioning: review
+  epic-3-retrospective: optional
+
+  epic-4: in-progress
+  4-1-configurer-desktop-app-ui-avec-mvvm-pattern: review
+  4-2-implementer-detection-et-acces-usb-dongle-pkcs-11-csp: review
+  4-3-implementer-signature-pades-avec-itext-7-bouncycastle: review
+  4-4-implementer-validation-certificat-ocsp-crl-et-rfc-3161-timestamping: review
+  4-5-implementer-communication-desktop-app-backend-api-refit: review
+  4-6-implementer-batch-signing-avec-progress-tracking: review
+  epic-4-retrospective: optional
+
+  epic-5: in-progress
+  5-1-configurer-hangfire-pour-background-jobs: review
+  5-2-implementer-batch-document-generation-endpoint: review
+  5-3-implementer-batch-status-polling-endpoint: review
+  5-4-implementer-dead-letter-queue-et-retry-logic: review
+  5-5-optimiser-performance-batch-processing: review
+  epic-5-retrospective: optional
+
+  epic-6: in-progress
+  6-1-creer-public-verification-web-page: review
+  6-2-implementer-endpoint-de-verification-publique: review
+  6-3-afficher-resultat-de-verification-avec-ui-ux-claire: review
+  epic-6-retrospective: optional
+
+  epic-7: in-progress
+  7-1-generer-openapi-3-0-specification-complete: review
+  7-2-implementer-json-schema-validation: review
+  7-3-implementer-webhook-notifications-optionnel: review
+  7-4-implementer-rate-limiting-par-endpoint: review
+  epic-7-retrospective: optional
+
+  epic-8: in-progress
+  8-1-implementer-audit-trail-immuable: review
+  8-2-implementer-endpoint-audit-trail-pour-auditors: review
+  8-3-implementer-student-rights-api-access-rectification-deletion: review
+  8-4-generer-cndp-compliance-reports: review
+  epic-8-retrospective: optional
+
+  epic-9: in-progress
+  9-1-configurer-service-d-email-notifications: review
+  9-2-implementer-retry-logic-pour-emails-echoues: review
+  epic-9-retrospective: optional
+
+  epic-10: in-progress
+  10-1-configurer-serilog-seq-pour-structured-logging: review
+  10-2-configurer-prometheus-grafana-pour-monitoring: review
+  10-3-configurer-alerting-certificate-expiry-failures-storage: review
+  10-4-creer-admin-dashboard-avec-metriques-temps-reel: review
+  epic-10-retrospective: optional

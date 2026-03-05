@@ -1,0 +1,21 @@
+# Environment variables
+.env
+
+# Docker
+docker-compose.override.yml
+
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.cache
+.vs/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

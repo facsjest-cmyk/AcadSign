@@ -1,0 +1,995 @@
+<Window x:Class="AcadSign.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:AcadSign.ViewModels"
+        xmlns:conv="clr-namespace:AcadSign.Converters"
+        xmlns:models="clr-namespace:AcadSign.Models"
+        Title="AcadSign — Signature Électronique"
+        Width="1380" Height="820"
+        MinWidth="1100" MinHeight="650"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="CanResizeWithGrip">
+
+    <Window.Resources>
+        <conv:BoolToVisibilityConverter          x:Key="BoolVis"/>
+        <conv:InverseBoolToVisibilityConverter   x:Key="InvBoolVis"/>
+        <conv:StringToVisibilityConverter        x:Key="StrVis"/>
+        <conv:NullToVisibilityConverter          x:Key="NullVis"/>
+        <conv:InverseNullToVisibilityConverter   x:Key="InvNullVis"/>
+        <conv:StatusToColorConverter             x:Key="StatusColor"/>
+        <conv:StatusToBackgroundConverter        x:Key="StatusBg"/>
+        <conv:StatusToLabelConverter             x:Key="StatusLabel"/>
+        <conv:StatusToBorderBrushConverter       x:Key="StatusBorder"/>
+        <conv:ViewModeToLabelConverter           x:Key="ViewModeLabel"/>
+        <conv:ZoomToScaleTransformConverter      x:Key="ZoomScale"/>
+        <conv:DoubleToPercentageConverter        x:Key="ZoomPct"/>
+        <conv:PinLengthToEnabledConverter        x:Key="PinEnabled"/>
+        <conv:DocTypeToShortLabelConverter       x:Key="DocTypeShort"/>
+    </Window.Resources>
+
+    <!-- ░░ OUTER BORDER (rounded window) ░░ -->
+    <Border Background="{StaticResource BgBrush}"
+            CornerRadius="10"
+            BorderBrush="{StaticResource BorderBrush}"
+            BorderThickness="1">
+        <Border.Effect>
+            <DropShadowEffect Color="Black" BlurRadius="30" ShadowDepth="0" Opacity="0.7"/>
+        </Border.Effect>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="38"/>   <!-- Title bar    -->
+                <RowDefinition Height="46"/>   <!-- Toolbar      -->
+                <RowDefinition Height="*"/>    <!-- Main content -->
+                <RowDefinition Height="24"/>   <!-- Status bar   -->
+            </Grid.RowDefinitions>
+
+            <!-- ════════════════════════════════════════════════════════════
+                 ROW 0: TITLE BAR
+            ═════════════════════════════════════════════════════════════ -->
+            <Border Grid.Row="0"
+                    Background="#070C14"
+                    CornerRadius="10,10,0,0"
+                    MouseLeftButtonDown="TitleBar_MouseDown">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- App icon + name -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal"
+                                VerticalAlignment="Center" Margin="14,0,0,0">
+                        <Border Width="22" Height="22" CornerRadius="5"
+                                Margin="0,0,8,0">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Color="#0EA5E9" Offset="0"/>
+                                    <GradientStop Color="#6366F1" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <TextBlock Text="✍" FontSize="12"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock FontFamily="Consolas" FontSize="12"
+                                   Foreground="{StaticResource SubBrush}">
+                            <Run Text="Acad" Foreground="{StaticResource TextBrush}" FontWeight="Bold"/>
+                            <Run Text="Sign" Foreground="{StaticResource AccentIndigoBrush}" FontWeight="Bold"/>
+                            <Run Text=" · v2.1 · Université Hassan II de Casablanca"
+                                 Foreground="{StaticResource MutedBrush}"/>
+                        </TextBlock>
+                    </StackPanel>
+
+                    <!-- Window controls -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal"
+                                VerticalAlignment="Center" Margin="0,0,14,0">
+                        <Button Style="{StaticResource TitleBarButtonStyle}"
+                                Background="#FBBF24" Margin="0,0,6,0"
+                                Click="MinimizeWindow"/>
+                        <Button Style="{StaticResource TitleBarButtonStyle}"
+                                Background="#34D399" Margin="0,0,6,0"
+                                Click="MaximizeWindow"/>
+                        <Button Style="{StaticResource TitleBarButtonStyle}"
+                                Background="#F87171"
+                                Click="CloseWindow"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ════════════════════════════════════════════════════════════
+                 ROW 1: MAIN TOOLBAR
+            ═════════════════════════════════════════════════════════════ -->
+            <Border Grid.Row="1" Background="#0D1520"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="0,0,0,1">
+                <StackPanel Orientation="Horizontal"
+                            VerticalAlignment="Center" Margin="12,0">
+
+                    <!-- Fetch API -->
+                    <Button Style="{StaticResource ToolbarButtonStyle}"
+                            Command="{Binding FetchFromApiCommand}"
+                            IsEnabled="{Binding IsLoadingFromApi, Converter={StaticResource InvBoolVis}}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="🔄" Margin="0,0,5,0"/>
+                            <TextBlock Text="Charger API"/>
+                        </StackPanel>
+                    </Button>
+                    <!-- Loading spinner when fetching -->
+                    <Border Visibility="{Binding IsLoadingFromApi, Converter={StaticResource BoolVis}}"
+                            Margin="4,0" VerticalAlignment="Center">
+                        <TextBlock Text="⏳" FontSize="14" Foreground="{StaticResource AmberBrush}">
+                            <TextBlock.RenderTransform>
+                                <RotateTransform x:Name="LoadingRotate" CenterX="8" CenterY="8"/>
+                            </TextBlock.RenderTransform>
+                        </TextBlock>
+                    </Border>
+
+                    <Separator Style="{StaticResource ToolbarSeparatorStyle}"/>
+
+                    <!-- PDF Views -->
+                    <Button Style="{StaticResource ToolbarButtonStyle}"
+                            Command="{Binding ShowBeforeSignatureCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="👁" Margin="0,0,5,0"/>
+                            <TextBlock Text="Avant signature"/>
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource ToolbarButtonStyle}"
+                            Command="{Binding ShowAfterSignatureCommand}"
+                            IsEnabled="{Binding IsSignedView}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="🔏" Margin="0,0,5,0"/>
+                            <TextBlock Text="Après signature"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Separator Style="{StaticResource ToolbarSeparatorStyle}"/>
+
+                    <!-- Batch Sign -->
+                    <Button Style="{StaticResource ToolbarButtonGreenStyle}"
+                            Command="{Binding OpenBatchSignDialogCommand}"
+                            IsEnabled="{Binding HasSelectedItems}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="⚡" Margin="0,0,5,0"/>
+                            <TextBlock>
+                                <Run Text="Signature par lot ("/>
+                                <Run Text="{Binding SelectedCount}"/>
+                                <Run Text=")"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </Button>
+
+                    <Separator Style="{StaticResource ToolbarSeparatorStyle}"/>
+
+                    <!-- Email -->
+                    <Button Style="{StaticResource ToolbarButtonStyle}"
+                            Command="{Binding SendEmailCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="📧" Margin="0,0,5,0"/>
+                            <TextBlock Text="Envoyer par email"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- S3 Export -->
+                    <Button Style="{StaticResource ToolbarButtonStyle}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="☁" Margin="0,0,5,0"/>
+                            <TextBlock Text="Exporter S3"/>
+                        </StackPanel>
+                    </Button>
+
+                    <Separator Style="{StaticResource ToolbarSeparatorStyle}"/>
+
+                    <!-- Clear -->
+                    <Button Style="{StaticResource ToolbarButtonDangerStyle}"
+                            Command="{Binding ClearSelectionCommand}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="✕" Margin="0,0,5,0"/>
+                            <TextBlock Text="Désélectionner"/>
+                        </StackPanel>
+                    </Button>
+
+                    <!-- Status indicators (right) -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center"
+                                HorizontalAlignment="Right" Margin="20,0,0,0">
+                        <!-- e-Sign -->
+                        <Ellipse Width="7" Height="7" Margin="0,0,5,0"
+                                 Fill="{Binding ESignStatusColor}"/>
+                        <TextBlock Foreground="{StaticResource MutedBrush}" FontSize="11"
+                                   FontFamily="Consolas" VerticalAlignment="Center" Margin="0,0,14,0">
+                            <Run Text="e-Sign: "/><Run Text="{Binding ESignStatus}"/>
+                        </TextBlock>
+
+                        <!-- S3 -->
+                        <Ellipse Width="7" Height="7" Margin="0,0,5,0"
+                                 Fill="{Binding S3StatusColor}"/>
+                        <TextBlock Foreground="{StaticResource MutedBrush}" FontSize="11"
+                                   FontFamily="Consolas" VerticalAlignment="Center" Margin="0,0,14,0">
+                            <Run Text="S3: "/><Run Text="{Binding S3Status}"/>
+                        </TextBlock>
+
+                        <!-- API -->
+                        <Ellipse Width="7" Height="7" Margin="0,0,5,0"
+                                 Fill="{Binding ApiStatusColor}"/>
+                        <TextBlock Foreground="{StaticResource MutedBrush}" FontSize="11"
+                                   FontFamily="Consolas" VerticalAlignment="Center">
+                            <Run Text="SIS: "/><Run Text="{Binding ApiStatus}"/>
+                        </TextBlock>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- ════════════════════════════════════════════════════════════
+                 ROW 2: MAIN CONTENT  (Left | Center | Right)
+            ═════════════════════════════════════════════════════════════ -->
+            <Grid Grid.Row="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="310" MinWidth="240" MaxWidth="400"/>
+                    <ColumnDefinition Width="3"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="3"/>
+                    <ColumnDefinition Width="285" MinWidth="240" MaxWidth="360"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- ── LEFT: Document List ─────────────────────────────── -->
+                <Grid Grid.Column="0" Background="{StaticResource PanelBrush}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>  <!-- Panel header  -->
+                        <RowDefinition Height="Auto"/>  <!-- Filter chips  -->
+                        <RowDefinition Height="Auto"/>  <!-- Search        -->
+                        <RowDefinition Height="*"/>     <!-- List          -->
+                        <RowDefinition Height="Auto"/>  <!-- Batch bar     -->
+                    </Grid.RowDefinitions>
+
+                    <!-- Panel header -->
+                    <Border Grid.Row="0" Style="{StaticResource PanelSectionStyle}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="DEMANDES"
+                                       Style="{StaticResource SectionLabelStyle}"
+                                       Margin="0" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <Border CornerRadius="20" Padding="7,2" Margin="0,0,5,0"
+                                        Background="#F59E0B">
+                                    <TextBlock Text="{Binding PendingCount}"
+                                               Foreground="White" FontSize="10" FontWeight="Bold"/>
+                                </Border>
+                                <Border CornerRadius="20" Padding="7,2"
+                                        Background="{StaticResource GreenBrush}">
+                                    <TextBlock Text="{Binding SignedCount}"
+                                               Foreground="White" FontSize="10" FontWeight="Bold"/>
+                                </Border>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Filter chips -->
+                    <Border Grid.Row="1" Style="{StaticResource PanelSectionStyle}">
+                        <StackPanel Orientation="Horizontal" Margin="2,0">
+                            <RadioButton Style="{StaticResource FilterChipStyle}"
+                                         IsChecked="True" Margin="0,0,5,0">
+                                <RadioButton.Command>
+                                    <Binding Path="DataContext.FilterStatusCommand"
+                                             RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                </RadioButton.Command>
+                                <RadioButton.CommandParameter>all</RadioButton.CommandParameter>
+                                <TextBlock Text="Tous"/>
+                            </RadioButton>
+                            <RadioButton Style="{StaticResource FilterChipStyle}" Margin="0,0,5,0"
+                                         CommandParameter="pending">
+                                <TextBlock Text="En attente"/>
+                            </RadioButton>
+                            <RadioButton Style="{StaticResource FilterChipStyle}" Margin="0,0,5,0"
+                                         CommandParameter="signed">
+                                <TextBlock Text="Signés"/>
+                            </RadioButton>
+                            <RadioButton Style="{StaticResource FilterChipStyle}"
+                                         CommandParameter="error">
+                                <TextBlock Text="Erreur"/>
+                            </RadioButton>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Search box -->
+                    <Border Grid.Row="2" Style="{StaticResource PanelSectionStyle}" Padding="10,8">
+                        <Grid>
+                            <TextBlock Text="⌕" Foreground="{StaticResource MutedBrush}"
+                                       FontSize="16" VerticalAlignment="Center" Margin="4,0"/>
+                            <TextBox Style="{StaticResource DarkInputStyle}"
+                                     Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                     Padding="26,7,10,7"
+                                     Background="Transparent" BorderThickness="0">
+                                <TextBox.Resources>
+                                    <Style TargetType="Border">
+                                        <Setter Property="CornerRadius" Value="7"/>
+                                    </Style>
+                                </TextBox.Resources>
+                            </TextBox>
+                        </Grid>
+                    </Border>
+
+                    <!-- Document list -->
+                    <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
+                        <ListBox Style="{StaticResource DocListBoxStyle}"
+                                 ItemsSource="{Binding FilteredDocuments}"
+                                 SelectedItem="{Binding SelectedDocument}"
+                                 Padding="4">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate DataType="{x:Type models:DocumentRequest}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- Checkbox -->
+                                        <CheckBox Grid.Column="0" VerticalAlignment="Center"
+                                                  Margin="0,0,8,0"
+                                                  IsChecked="{Binding IsSelected}"
+                                                  Foreground="{StaticResource AccentBlueBrush}"/>
+
+                                        <!-- Status left border -->
+                                        <Border Grid.Column="1"
+                                                BorderBrush="{Binding Status, Converter={StaticResource StatusBorder}}"
+                                                BorderThickness="2,0,0,0"
+                                                Padding="8,0,0,0">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding DisplayName}"
+                                                           FontSize="13" FontWeight="SemiBold"
+                                                           Foreground="{StaticResource TextBrush}"
+                                                           Margin="0,0,0,2"/>
+                                                <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                                    <TextBlock Text="{Binding Student.Id}"
+                                                               FontSize="10" FontFamily="Consolas"
+                                                               Foreground="{StaticResource MutedBrush}"
+                                                               Margin="0,0,8,0"/>
+                                                    <Border Background="#6366F118" CornerRadius="3"
+                                                            Padding="4,1">
+                                                        <TextBlock Text="{Binding DocumentType, Converter={StaticResource DocTypeShort}}"
+                                                                   FontSize="10" Foreground="#818CF8"/>
+                                                    </Border>
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding DisplayType}"
+                                                           FontSize="10"
+                                                           Foreground="{StaticResource MutedBrush}"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Status icon -->
+                                        <Grid Grid.Column="2" VerticalAlignment="Center">
+                                            <!-- Signed check -->
+                                            <Border Width="18" Height="18" CornerRadius="9"
+                                                    Background="{StaticResource GreenBrush}"
+                                                    Visibility="{Binding Status, Converter={StaticResource BoolVis}}">
+                                                <TextBlock Text="✓" FontSize="9" Foreground="White"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"/>
+                                            </Border>
+                                        </Grid>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </ScrollViewer>
+
+                    <!-- Batch selection bar -->
+                    <Border Grid.Row="4" Style="{StaticResource PanelSectionStyle}"
+                            Background="{StaticResource BgBrush}" BorderThickness="0,1,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <CheckBox Grid.Column="0" Margin="0,0,8,0"
+                                      Foreground="{StaticResource AccentBlueBrush}"/>
+                            <TextBlock Grid.Column="1" FontSize="12"
+                                       Foreground="{StaticResource SubBrush}"
+                                       VerticalAlignment="Center">
+                                <Run Text="{Binding SelectedCount}"/>
+                                <Run Text=" sélectionné(s)"/>
+                            </TextBlock>
+                            <Button Grid.Column="2" FontSize="11"
+                                    Foreground="{StaticResource AccentBlueBrush}"
+                                    Background="Transparent" BorderThickness="0"
+                                    Cursor="Hand"
+                                    Command="{Binding SelectAllPendingCommand}"
+                                    Content="Tout sélectionner"/>
+                        </Grid>
+                    </Border>
+                </Grid>
+
+                <!-- Splitter -->
+                <GridSplitter Grid.Column="1" Width="3" HorizontalAlignment="Stretch"
+                              Background="{StaticResource BorderBrush}"
+                              ResizeBehavior="PreviousAndNext"/>
+
+                <!-- ── CENTER: PDF Viewer ───────────────────────────────── -->
+                <Grid Grid.Column="2">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="40"/>  <!-- PDF toolbar -->
+                        <RowDefinition Height="*"/>   <!-- PDF canvas  -->
+                    </Grid.RowDefinitions>
+
+                    <!-- PDF Toolbar -->
+                    <Border Grid.Row="0" Background="#0D1520"
+                            BorderBrush="{StaticResource BorderBrush}"
+                            BorderThickness="0,0,0,1">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0">
+
+                            <!-- Navigation -->
+                            <Button Style="{StaticResource PdfToolButtonStyle}" Content="‹"
+                                    ToolTip="Page précédente"/>
+                            <TextBlock Foreground="{StaticResource MutedBrush}"
+                                       FontFamily="Consolas" FontSize="11"
+                                       VerticalAlignment="Center" Margin="8,0">
+                                <Run Text="Page "/><Run Text="{Binding CurrentPage}"/>
+                                <Run Text=" / "/><Run Text="{Binding TotalPages}"/>
+                            </TextBlock>
+                            <Button Style="{StaticResource PdfToolButtonStyle}" Content="›"
+                                    ToolTip="Page suivante"/>
+
+                            <Separator Style="{StaticResource ToolbarSeparatorStyle}"/>
+
+                            <!-- Zoom -->
+                            <Button Style="{StaticResource PdfToolButtonStyle}"
+                                    Command="{Binding ZoomOutCommand}" Content="−"
+                                    ToolTip="Zoom arrière"/>
+                            <TextBlock Foreground="{StaticResource MutedBrush}"
+                                       FontFamily="Consolas" FontSize="11"
+                                       VerticalAlignment="Center" Margin="6,0"
+                                       Text="{Binding ZoomLevel, Converter={StaticResource ZoomPct}}"/>
+                            <Button Style="{StaticResource PdfToolButtonStyle}"
+                                    Command="{Binding ZoomInCommand}" Content="+"
+                                    ToolTip="Zoom avant"/>
+
+                            <Separator Style="{StaticResource ToolbarSeparatorStyle}"/>
+
+                            <Button Style="{StaticResource PdfToolButtonStyle}" Content="↻"
+                                    ToolTip="Rotation"/>
+                            <Button Style="{StaticResource PdfToolButtonStyle}" Content="⬇"
+                                    ToolTip="Télécharger"/>
+                            <Button Style="{StaticResource PdfToolButtonStyle}" Content="🖨"
+                                    ToolTip="Imprimer"/>
+
+                            <!-- View mode label -->
+                            <Border Margin="12,0,0,0" CornerRadius="4" Padding="8,3"
+                                    VerticalAlignment="Center">
+                                <Border.Background>
+                                    <SolidColorBrush Color="#F59E0B" Opacity="0.1"/>
+                                </Border.Background>
+                                <TextBlock Text="{Binding IsSignedView, Converter={StaticResource ViewModeLabel}}"
+                                           FontSize="11" FontFamily="Consolas"
+                                           Foreground="{StaticResource AmberBrush}"/>
+                            </Border>
+
+                            <!-- View toggles (right) -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                                        Margin="12,0,0,0">
+                                <ToggleButton Style="{StaticResource ViewToggleButtonStyle}"
+                                              IsChecked="{Binding IsSignedView, Converter={StaticResource InvBoolVis}}"
+                                              Command="{Binding ShowBeforeSignatureCommand}"
+                                              Content="Avant" Margin="0,0,3,0"/>
+                                <ToggleButton Style="{StaticResource ViewToggleButtonStyle}"
+                                              IsChecked="{Binding IsSignedView}"
+                                              Command="{Binding ShowAfterSignatureCommand}"
+                                              IsEnabled="{Binding IsSignedView}"
+                                              Content="Après" Margin="0,0,3,0"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- PDF Canvas -->
+                    <ScrollViewer Grid.Row="1" Background="{StaticResource BgBrush}"
+                                  HorizontalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Auto">
+                        <Grid HorizontalAlignment="Center" VerticalAlignment="Top" Margin="20">
+
+                            <!-- Placeholder when no document selected -->
+                            <Border Width="480" Height="640"
+                                    Visibility="{Binding SelectedDocument, Converter={StaticResource InvNullVis}}"
+                                    Background="{StaticResource PanelBrush}"
+                                    CornerRadius="4" BorderBrush="{StaticResource BorderBrush}"
+                                    BorderThickness="1">
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <TextBlock Text="📄" FontSize="48" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Sélectionnez un document" Margin="0,12,0,0"
+                                               Foreground="{StaticResource MutedBrush}"
+                                               FontSize="14" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="dans la liste à gauche" Margin="0,4,0,0"
+                                               Foreground="{StaticResource MutedBrush}"
+                                               FontSize="12" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- PDF Page render -->
+                            <Border Visibility="{Binding SelectedDocument, Converter={StaticResource NullVis}}">
+                                <Border.RenderTransform>
+                                    <ScaleTransform ScaleX="{Binding ZoomLevel}"
+                                                    ScaleY="{Binding ZoomLevel}"
+                                                    CenterX="240" CenterY="320"/>
+                                </Border.RenderTransform>
+
+                                <!-- Signed indicator ring -->
+                                <Border x:Name="SignedRing"
+                                        Visibility="{Binding IsSignedView, Converter={StaticResource BoolVis}}">
+                                    <Border.Effect>
+                                        <DropShadowEffect Color="#10B981" BlurRadius="20"
+                                                          ShadowDepth="0" Opacity="0.5"/>
+                                    </Border.Effect>
+                                    <Border BorderBrush="{StaticResource GreenBrush}"
+                                            BorderThickness="2" CornerRadius="4">
+                                        <!-- Document content (White PDF area) -->
+                                        <ContentPresenter Content="{Binding SelectedDocument}">
+                                            <ContentPresenter.ContentTemplate>
+                                                <DataTemplate DataType="{x:Type models:DocumentRequest}">
+                                                    <views:PdfDocumentView/>
+                                                </DataTemplate>
+                                            </ContentPresenter.ContentTemplate>
+                                        </ContentPresenter>
+                                    </Border>
+                                </Border>
+
+                            </Border>
+                        </Grid>
+                    </ScrollViewer>
+                </Grid>
+
+                <!-- Splitter -->
+                <GridSplitter Grid.Column="3" Width="3" HorizontalAlignment="Stretch"
+                              Background="{StaticResource BorderBrush}"
+                              ResizeBehavior="PreviousAndNext"/>
+
+                <!-- ── RIGHT: Details + Sign + Email ───────────────────── -->
+                <ScrollViewer Grid.Column="4" VerticalScrollBarVisibility="Auto"
+                              Background="{StaticResource PanelBrush}">
+                    <StackPanel>
+
+                        <!-- Student info -->
+                        <Border Style="{StaticResource PanelSectionStyle}">
+                            <StackPanel>
+                                <TextBlock Text="ÉTUDIANT" Style="{StaticResource SectionLabelStyle}"/>
+                                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource InfoKeyStyle}" Text="Nom"/>
+                                    <TextBlock Grid.Column="1" Style="{StaticResource InfoValStyle}"
+                                               Text="{Binding SelectedDocument.Student.FullName, FallbackValue='—'}"/>
+                                </Grid>
+                                <Rectangle Height="1" Fill="{StaticResource BorderBrush}" Margin="0,4"/>
+                                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource InfoKeyStyle}" Text="CIN"/>
+                                    <TextBlock Grid.Column="1" Style="{StaticResource InfoValStyle}"
+                                               Text="{Binding SelectedDocument.Student.Cin, FallbackValue='—'}"/>
+                                </Grid>
+                                <Rectangle Height="1" Fill="{StaticResource BorderBrush}" Margin="0,4"/>
+                                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource InfoKeyStyle}" Text="N° Apogée"/>
+                                    <TextBlock Grid.Column="1" Style="{StaticResource InfoValStyle}"
+                                               Text="{Binding SelectedDocument.Student.Id, FallbackValue='—'}"/>
+                                </Grid>
+                                <Rectangle Height="1" Fill="{StaticResource BorderBrush}" Margin="0,4"/>
+                                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource InfoKeyStyle}" Text="Filière"/>
+                                    <TextBlock Grid.Column="1" Style="{StaticResource InfoValStyle}"
+                                               Text="{Binding SelectedDocument.Student.Program, FallbackValue='—'}"/>
+                                </Grid>
+                                <Rectangle Height="1" Fill="{StaticResource BorderBrush}" Margin="0,4"/>
+                                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource InfoKeyStyle}" Text="Niveau"/>
+                                    <TextBlock Grid.Column="1" Style="{StaticResource InfoValStyle}"
+                                               Text="{Binding SelectedDocument.Student.Level, FallbackValue='—'}"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Document info -->
+                        <Border Style="{StaticResource PanelSectionStyle}">
+                            <StackPanel>
+                                <TextBlock Text="DOCUMENT" Style="{StaticResource SectionLabelStyle}"/>
+                                <Grid Margin="0,0,0,6"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource InfoKeyStyle}" Text="Type"/>
+                                    <TextBlock Grid.Column="1" Style="{StaticResource InfoValStyle}"
+                                               Text="{Binding SelectedDocument.DisplayType, FallbackValue='—'}"/>
+                                </Grid>
+                                <!-- Status pill -->
+                                <Border Style="{StaticResource StatusPillStyle}"
+                                        Background="{Binding SelectedDocument.Status, Converter={StaticResource StatusBg}}"
+                                        BorderBrush="{Binding SelectedDocument.Status, Converter={StaticResource StatusBorder}}"
+                                        BorderThickness="1" Margin="0,2,0,6">
+                                    <TextBlock Text="{Binding SelectedDocument.Status, Converter={StaticResource StatusLabel}}"
+                                               Foreground="{Binding SelectedDocument.Status, Converter={StaticResource StatusColor}}"
+                                               FontSize="11" FontWeight="SemiBold"/>
+                                </Border>
+                                <Grid Margin="0,2,0,2"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource InfoKeyStyle}" Text="Référence"/>
+                                    <TextBlock Grid.Column="1" Style="{StaticResource InfoValStyle}"
+                                               Text="{Binding SelectedDocument.Reference, FallbackValue='—'}"/>
+                                </Grid>
+                                <Grid Margin="0,2,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource InfoKeyStyle}" Text="Date"/>
+                                    <TextBlock Grid.Column="1" Style="{StaticResource InfoValStyle}"
+                                               Text="{Binding SelectedDocument.DisplayDate, FallbackValue='—'}"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Certificate info -->
+                        <Border Style="{StaticResource PanelSectionStyle}">
+                            <StackPanel>
+                                <TextBlock Text="CERTIFICAT" Style="{StaticResource SectionLabelStyle}"/>
+                                <Border Background="{StaticResource CardBrush}"
+                                        CornerRadius="8" Padding="12,10" Margin="0,0,0,8">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="40"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Width="36" Height="36"
+                                                CornerRadius="8" VerticalAlignment="Center">
+                                            <Border.Background>
+                                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                    <GradientStop Color="#0EA5E9" Offset="0"/>
+                                                    <GradientStop Color="#6366F1" Offset="1"/>
+                                                </LinearGradientBrush>
+                                            </Border.Background>
+                                            <TextBlock Text="🔐" HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center" FontSize="16"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                            <TextBlock Text="Certificat Qualifié — Scolarité"
+                                                       FontWeight="SemiBold" FontSize="12"
+                                                       Foreground="{StaticResource TextBrush}"/>
+                                            <TextBlock Text="Université Hassan II · UH2-SIGN-2024"
+                                                       FontSize="10" Foreground="{StaticResource MutedBrush}"
+                                                       Margin="0,2,0,0"/>
+                                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                <Border Background="#10B98120" CornerRadius="10" Padding="6,2" Margin="0,0,5,0">
+                                                    <TextBlock Text="● ACTIF" FontSize="9"
+                                                               Foreground="{StaticResource GreenBrush}"
+                                                               FontFamily="Consolas"/>
+                                                </Border>
+                                                <Border Background="#6366F120" CornerRadius="10" Padding="6,2">
+                                                    <TextBlock Text="PAdES-B-LT" FontSize="9"
+                                                               Foreground="#818CF8"/>
+                                                </Border>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <!-- PIN input -->
+                                <TextBlock Text="Code PIN du certificat"
+                                           FontSize="10" Foreground="{StaticResource MutedBrush}"
+                                           FontFamily="Consolas" Margin="0,0,0,6"
+                                           TextTransform="Uppercase" LetterSpacing="1"/>
+                                <PasswordBox x:Name="PinBox"
+                                             Style="{StaticResource PinInputStyle}"
+                                             MaxLength="8"
+                                             PasswordChanged="PinBox_PasswordChanged"/>
+                                <TextBlock Text="🔒 Transmission sécurisée via HSM"
+                                           FontSize="10" Foreground="{StaticResource MutedBrush}"
+                                           Margin="0,6,0,10"/>
+
+                                <!-- Sign button -->
+                                <Button Style="{StaticResource SignButtonStyle}"
+                                        Command="{Binding SignDocumentCommand}"
+                                        IsEnabled="{Binding CanSign}"
+                                        Height="42" Margin="0,0,0,6">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="🔏" Margin="0,0,8,0" FontSize="14"/>
+                                        <TextBlock Text="Signer le document" FontSize="13"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <!-- Batch sign button -->
+                                <Button Style="{StaticResource BatchSignButtonStyle}"
+                                        Command="{Binding OpenBatchSignDialogCommand}"
+                                        IsEnabled="{Binding HasSelectedItems}"
+                                        Height="38">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="⚡" Margin="0,0,8,0" FontSize="13"/>
+                                        <TextBlock FontSize="12">
+                                            <Run Text="Signer la sélection ("/>
+                                            <Run Text="{Binding SelectedCount}"/>
+                                            <Run Text=")"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Sign progress (visible during signing) -->
+                        <Border Style="{StaticResource PanelSectionStyle}"
+                                Visibility="{Binding ShowSignProgress, Converter={StaticResource BoolVis}}">
+                            <StackPanel>
+                                <TextBlock Text="PROGRESSION" Style="{StaticResource SectionLabelStyle}"/>
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0"
+                                               Text="{Binding SignProgressLabel}"
+                                               FontSize="11" Foreground="{StaticResource SubBrush}"/>
+                                    <TextBlock Grid.Column="1"
+                                               FontSize="11" Foreground="{StaticResource MutedBrush}"
+                                               FontFamily="Consolas">
+                                        <Run Text="{Binding SignProgress}"/><Run Text="%"/>
+                                    </TextBlock>
+                                </Grid>
+                                <ProgressBar Style="{StaticResource SignProgressBarStyle}"
+                                             Value="{Binding SignProgress}" Maximum="100"
+                                             Margin="0,0,0,8"/>
+                                <RichTextBox Style="{StaticResource LogTerminalStyle}"
+                                             Document="{Binding SignLog}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Signature details (after signing) -->
+                        <Border Style="{StaticResource PanelSectionStyle}"
+                                Visibility="{Binding IsSignedView, Converter={StaticResource BoolVis}}">
+                            <StackPanel>
+                                <TextBlock Text="DÉTAILS SIGNATURE" Style="{StaticResource SectionLabelStyle}"/>
+                                <Grid Margin="0,0,0,4"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource InfoKeyStyle}" Text="Hash SHA-256"/>
+                                    <TextBlock Grid.Column="1" Style="{StaticResource InfoValStyle}"
+                                               FontSize="9"
+                                               Text="{Binding SelectedDocument.SignatureHash, FallbackValue='a3f8c1d2...e9b0'}"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </Grid>
+                                <Grid Margin="0,4,0,4"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource InfoKeyStyle}" Text="Signé le"/>
+                                    <TextBlock Grid.Column="1" Style="{StaticResource InfoValStyle}" FontSize="9"
+                                               Text="{Binding SelectedDocument.SignedAt, StringFormat='dd/MM/yyyy HH:mm', FallbackValue='—'}"/>
+                                </Grid>
+                                <Grid Margin="0,0,0,4"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource InfoKeyStyle}" Text="Stockage S3"/>
+                                    <TextBlock Grid.Column="1" FontSize="9" Foreground="{StaticResource GreenBrush}"
+                                               FontFamily="Consolas" VerticalAlignment="Center"
+                                               Text="✓ Enregistré" TextAlignment="Right"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Email section -->
+                        <Border Style="{StaticResource PanelSectionStyle}">
+                            <StackPanel>
+                                <TextBlock Text="ENVOI EMAIL" Style="{StaticResource SectionLabelStyle}"/>
+                                <TextBox Style="{StaticResource DarkInputStyle}"
+                                         Text="{Binding EmailTo, UpdateSourceTrigger=PropertyChanged}"
+                                         Margin="0,0,0,6"/>
+                                <TextBox Style="{StaticResource DarkInputStyle}"
+                                         Text="{Binding EmailSubject, UpdateSourceTrigger=PropertyChanged}"
+                                         Margin="0,0,0,8"/>
+
+                                <!-- Send / Sent state -->
+                                <Button Style="{StaticResource EmailButtonStyle}"
+                                        Command="{Binding SendEmailCommand}"
+                                        Visibility="{Binding EmailSent, Converter={StaticResource InvBoolVis}}"
+                                        Height="38">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="📧" Margin="0,0,7,0"/>
+                                        <TextBlock Text="Envoyer le document signé"
+                                                   Visibility="{Binding IsSendingEmail, Converter={StaticResource InvBoolVis}}"/>
+                                        <TextBlock Text="Envoi en cours..."
+                                                   Visibility="{Binding IsSendingEmail, Converter={StaticResource BoolVis}}"/>
+                                    </StackPanel>
+                                </Button>
+                                <Border Visibility="{Binding EmailSent, Converter={StaticResource BoolVis}}"
+                                        Background="#10B98110" BorderBrush="{StaticResource GreenBrush}"
+                                        BorderThickness="1" CornerRadius="7" Padding="12,10">
+                                    <TextBlock Foreground="{StaticResource GreenBrush}"
+                                               FontSize="12" FontWeight="SemiBold">
+                                        <Run Text="✓ Email envoyé à "/>
+                                        <Run Text="{Binding EmailTo}"/>
+                                    </TextBlock>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- S3 info -->
+                        <Border Style="{StaticResource PanelSectionStyle}">
+                            <StackPanel>
+                                <TextBlock Text="STOCKAGE S3" Style="{StaticResource SectionLabelStyle}"/>
+                                <Grid Margin="0,0,0,4"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource InfoKeyStyle}" Text="Bucket"/>
+                                    <TextBlock Grid.Column="1" Style="{StaticResource InfoValStyle}" Text="uh2-docs-signed"/>
+                                </Grid>
+                                <Grid Margin="0,4,0,4"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Style="{StaticResource InfoKeyStyle}" Text="Rétention"/>
+                                    <TextBlock Grid.Column="1" Style="{StaticResource InfoValStyle}" Text="30 ans"/>
+                                </Grid>
+                                <Button Style="{StaticResource EmailButtonStyle}" Height="34" Margin="0,4,0,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="🔗" Margin="0,0,6,0"/>
+                                        <TextBlock Text="Copier le lien S3"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+
+            <!-- ════════════════════════════════════════════════════════════
+                 ROW 3: STATUS BAR
+            ═════════════════════════════════════════════════════════════ -->
+            <Border Grid.Row="3" Background="#070C14"
+                    BorderBrush="{StaticResource BorderBrush}"
+                    BorderThickness="0,1,0,0"
+                    CornerRadius="0,0,10,10">
+                <Grid Margin="14,0">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Ellipse Width="6" Height="6" Fill="{StaticResource GreenBrush}" Margin="0,0,5,0"/>
+                        <TextBlock FontFamily="Consolas" FontSize="10"
+                                   Foreground="{StaticResource MutedBrush}" Margin="0,0,14,0"
+                                   Text="Connecté — Barid Al-Maghrib e-Sign"/>
+
+                        <TextBlock FontFamily="Consolas" FontSize="10"
+                                   Foreground="{StaticResource MutedBrush}" Margin="0,0,14,0">
+                            <Run Text="📄 "/><Run Text="{Binding TotalCount}"/><Run Text=" documents"/>
+                        </TextBlock>
+                        <TextBlock FontFamily="Consolas" FontSize="10"
+                                   Foreground="{StaticResource MutedBrush}" Margin="0,0,14,0">
+                            <Run Text="✅ "/><Run Text="{Binding SignedCount}"/><Run Text=" signés"/>
+                        </TextBlock>
+                        <TextBlock FontFamily="Consolas" FontSize="10"
+                                   Foreground="{StaticResource MutedBrush}">
+                            <Run Text="⏳ "/><Run Text="{Binding PendingCount}"/><Run Text=" en attente"/>
+                        </TextBlock>
+
+                        <TextBlock FontFamily="Consolas" FontSize="10"
+                                   Foreground="{StaticResource AccentBlueBrush}"
+                                   Text="{Binding StatusBarMessage}"
+                                   Margin="14,0,0,0"
+                                   Visibility="{Binding StatusBarMessage, Converter={StaticResource StrVis}}"/>
+                    </StackPanel>
+
+                    <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center"
+                               FontFamily="Consolas" FontSize="10"
+                               Foreground="{StaticResource MutedBrush}"
+                               Text="{Binding CurrentTime}"/>
+                </Grid>
+            </Border>
+
+            <!-- ════════════════════════════════════════════════════════════
+                 BATCH SIGN DIALOG  (overlay)
+            ═════════════════════════════════════════════════════════════ -->
+            <Grid Grid.Row="0" Grid.RowSpan="4"
+                  Visibility="{Binding ShowBatchDialog, Converter={StaticResource BoolVis}}">
+                <!-- Backdrop -->
+                <Rectangle Fill="Black" Opacity="0.7"/>
+
+                <!-- Dialog -->
+                <Border Width="440" VerticalAlignment="Center"
+                        Background="{StaticResource PanelBrush}"
+                        BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="1" CornerRadius="12">
+                    <Border.Effect>
+                        <DropShadowEffect Color="Black" BlurRadius="40"
+                                          ShadowDepth="0" Opacity="0.8"/>
+                    </Border.Effect>
+                    <StackPanel>
+                        <!-- Header -->
+                        <Border Padding="20,16" BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="0,0,0,1">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="⚡" FontSize="20" Margin="0,0,10,0"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock Text="Signature par lot" FontSize="16"
+                                           FontWeight="Bold" Foreground="{StaticResource TextBrush}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Body -->
+                        <StackPanel Padding="20">
+                            <TextBlock Foreground="{StaticResource SubBrush}" FontSize="13"
+                                       TextWrapping="Wrap" Margin="0,0,0,16">
+                                <Run Text="Vous êtes sur le point de signer électroniquement "/>
+                                <Run Text="{Binding SelectedCount}"
+                                     Foreground="{StaticResource TextBrush}" FontWeight="Bold"/>
+                                <Run Text=" document(s). Cette action est irréversible une fois confirmée."/>
+                            </TextBlock>
+
+                            <!-- Progress (shown during batch) -->
+                            <StackPanel Visibility="{Binding IsBatchSigning, Converter={StaticResource BoolVis}}"
+                                        Margin="0,0,0,10">
+                                <Grid Margin="0,0,0,5">
+                                    <TextBlock Text="{Binding BatchProgressLabel}" FontSize="11"
+                                               Foreground="{StaticResource SubBrush}"/>
+                                    <TextBlock HorizontalAlignment="Right" FontFamily="Consolas"
+                                               FontSize="11" Foreground="{StaticResource MutedBrush}">
+                                        <Run Text="{Binding BatchProgress}"/><Run Text="%"/>
+                                    </TextBlock>
+                                </Grid>
+                                <ProgressBar Style="{StaticResource SignProgressBarStyle}"
+                                             Value="{Binding BatchProgress}" Maximum="100"
+                                             Margin="0,0,0,10"/>
+                                <RichTextBox Style="{StaticResource LogTerminalStyle}"
+                                             Document="{Binding BatchLog}"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Footer -->
+                        <Border Padding="16,14" BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="0,1,0,0">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Content="Annuler" Margin="0,0,8,0"
+                                        Padding="16,8" Background="Transparent"
+                                        Foreground="{StaticResource MutedBrush}"
+                                        BorderBrush="{StaticResource BorderBrush}"
+                                        BorderThickness="1" Cursor="Hand"
+                                        Command="{Binding CloseBatchDialogCommand}"
+                                        Visibility="{Binding IsBatchSigning, Converter={StaticResource InvBoolVis}}">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{TemplateBinding Background}"
+                                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                                    CornerRadius="7" Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter HorizontalAlignment="Center"
+                                                                  VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                                <Button Padding="16,8" BorderThickness="0" Cursor="Hand"
+                                        Command="{Binding StartBatchSignCommand}"
+                                        Visibility="{Binding IsBatchSigning, Converter={StaticResource InvBoolVis}}">
+                                    <Button.Background>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                            <GradientStop Color="#10B981" Offset="0"/>
+                                            <GradientStop Color="#0EA5E9" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Button.Background>
+                                    <Button.Foreground><SolidColorBrush Color="White"/></Button.Foreground>
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{TemplateBinding Background}"
+                                                    CornerRadius="7" Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter HorizontalAlignment="Center"
+                                                                  VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="⚡ Lancer la signature"
+                                                   FontSize="13" FontWeight="Bold"/>
+                                    </StackPanel>
+                                </Button>
+                                <!-- Close after done -->
+                                <Button Content="✓ Fermer" Padding="16,8" BorderThickness="0"
+                                        Cursor="Hand"
+                                        Command="{Binding CloseBatchDialogCommand}"
+                                        Visibility="{Binding IsBatchSigning, Converter={StaticResource InvBoolVis}}"
+                                        Foreground="{StaticResource GreenBrush}"
+                                        Background="#10B98115">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{TemplateBinding Background}"
+                                                    CornerRadius="7" Padding="{TemplateBinding Padding}"
+                                                    BorderBrush="{StaticResource GreenBrush}"
+                                                    BorderThickness="1">
+                                                <ContentPresenter HorizontalAlignment="Center"
+                                                                  VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+        </Grid>
+    </Border>
+</Window>

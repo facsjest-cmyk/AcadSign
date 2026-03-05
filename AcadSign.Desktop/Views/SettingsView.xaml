@@ -1,0 +1,114 @@
+<Window x:Class="AcadSign.Desktop.Views.SettingsView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="AcadSign - Paramètres" 
+        Height="500" Width="600"
+        WindowStartupLocation="CenterScreen">
+    
+    <Grid Background="#F5F5F5">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <StackPanel Grid.Row="0" Background="#2196F3" Padding="20">
+            <TextBlock Text="Paramètres" 
+                       FontSize="24" 
+                       FontWeight="Bold" 
+                       Foreground="White"
+                       HorizontalAlignment="Center"/>
+        </StackPanel>
+        
+        <ScrollViewer Grid.Row="1" 
+                      VerticalScrollBarVisibility="Auto"
+                      Margin="20">
+            <StackPanel>
+                
+                <TextBlock Text="Configuration API" 
+                           FontSize="18" 
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,15"/>
+                
+                <TextBlock Text="URL de l'API Backend" 
+                           FontSize="12" 
+                           Margin="0,0,0,5"/>
+                <TextBox Text="{Binding ApiEndpoint, UpdateSourceTrigger=PropertyChanged}"
+                         Height="30"
+                         Padding="5"
+                         Margin="0,0,0,20"/>
+                
+                <Separator Margin="0,10,0,20"/>
+                
+                <TextBlock Text="Configuration Dongle USB" 
+                           FontSize="18" 
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,15"/>
+                
+                <CheckBox Content="Détection automatique du dongle"
+                          IsChecked="{Binding AutoDetectDongle}"
+                          Margin="0,0,0,10"/>
+                
+                <TextBlock Text="PIN du dongle" 
+                           FontSize="12" 
+                           Margin="0,10,0,5"/>
+                <PasswordBox x:Name="DonglePinBox"
+                             Height="30"
+                             Padding="5"
+                             Margin="0,0,0,20"/>
+                
+                <Separator Margin="0,10,0,20"/>
+                
+                <TextBlock Text="Langue / Language" 
+                           FontSize="18" 
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,15"/>
+                
+                <ComboBox SelectedItem="{Binding SelectedLanguage}"
+                          ItemsSource="{Binding AvailableLanguages}"
+                          Height="30"
+                          Margin="0,0,0,20"/>
+                
+                <Separator Margin="0,10,0,20"/>
+                
+                <TextBlock Text="Informations" 
+                           FontSize="18" 
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,15"/>
+                
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                    <TextBlock Text="Version: " FontWeight="SemiBold" Width="100"/>
+                    <TextBlock Text="{Binding AppVersion}"/>
+                </StackPanel>
+                
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+                    <TextBlock Text="Utilisateur: " FontWeight="SemiBold" Width="100"/>
+                    <TextBlock Text="{Binding CurrentUser}"/>
+                </StackPanel>
+                
+            </StackPanel>
+        </ScrollViewer>
+        
+        <StackPanel Grid.Row="2" 
+                    Orientation="Horizontal" 
+                    HorizontalAlignment="Right"
+                    Margin="20">
+            <Button Content="Enregistrer"
+                    Command="{Binding SaveCommand}"
+                    Width="120"
+                    Height="35"
+                    Margin="5"
+                    Background="#4CAF50"
+                    Foreground="White"
+                    BorderThickness="0"/>
+            <Button Content="Annuler"
+                    Command="{Binding CancelCommand}"
+                    Width="120"
+                    Height="35"
+                    Margin="5"
+                    Background="#9E9E9E"
+                    Foreground="White"
+                    BorderThickness="0"/>
+        </StackPanel>
+    </Grid>
+</Window>

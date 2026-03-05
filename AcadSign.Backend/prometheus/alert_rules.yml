@@ -1,0 +1,128 @@
+groups:
+  - name: acadsign_alerts
+    interval: 30s
+    rules:
+      # 1. Certificate Expiry (3 mois avant)
+      - alert: CertificateExpiringSoon
+        expr: acadsign_certificate_days_remaining < 90
+        for: 1h
+        labels:
+          severity: warning
+          component: security
+        annotations:
+          summary: "Certificat Barid Al-Maghrib expire bientôt"
+          description: "Le certificat de signature électronique expire dans {{ $value }} jours. Renouvellement requis."
+      
+      - alert: CertificateExpiringCritical
+        expr: acadsign_certificate_days_remaining < 30
+        for: 1h
+        labels:
+          severity: critical
+          component: security
+        annotations:
+          summary: "Certificat Barid Al-Maghrib expire dans moins de 30 jours"
+          description: "URGENT: Le certificat expire dans {{ $value }} jours. Action immédiate requise."
+      
+      # 2. Signing Failures
+      - alert: HighSignatureFailureRate
+        expr: rate(acadsign_signature_failures_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          component: signature
+        annotations:
+          summary: "Taux d'échec de signature élevé"
+          description: "{{ $value | humanizePercentage }} des signatures échouent. Vérifier le dongle USB et les certificats."
+      
+      - alert: SignatureServiceDown
+        expr: up{job="acadsign-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: backend
+        annotations:
+          summary: "Service de signature indisponible"
+          description: "Le backend API est DOWN. Aucun document ne peut être signé."
+      
+      # 3. Storage Threshold
+      - alert: StorageAlmostFull
+        expr: (acadsign_storage_usage_bytes{storage_type="minio"} / acadsign_storage_capacity_bytes{storage_type="minio"}) > 0.8
+        for: 10m
+        labels:
+          severity: warning
+          component: storage
+        annotations:
+          summary: "Stockage S3 presque plein"
+          description: "{{ $value | humanizePercentage }} du stockage MinIO utilisé. Planifier l'extension."
+      
+      - alert: StorageCritical
+        expr: (acadsign_storage_usage_bytes{storage_type="minio"} / acadsign_storage_capacity_bytes{storage_type="minio"}) > 0.9
+        for: 5m
+        labels:
+          severity: critical
+          component: storage
+        annotations:
+          summary: "Stockage S3 critique"
+          description: "{{ $value | humanizePercentage }} du stockage utilisé. Extension URGENTE requise."
+      
+      - alert: DatabaseStorageFull
+        expr: (acadsign_storage_usage_bytes{storage_type="postgresql"} / acadsign_storage_capacity_bytes{storage_type="postgresql"}) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Stockage PostgreSQL presque plein"
+          description: "{{ $value | humanizePercentage }} du stockage base de données utilisé."
+      
+      # 4. API Downtime
+      - alert: APIDown
+        expr: up{job="acadsign-backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: backend
+        annotations:
+          summary: "API Backend indisponible"
+          description: "Le backend API ne répond pas depuis 1 minute."
+      
+      - alert: HighAPILatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          component: performance
+        annotations:
+          summary: "Latence API élevée"
+          description: "P95 latency = {{ $value }}s (seuil: 2s). Performances dégradées."
+      
+      - alert: HighErrorRate
+        expr: rate(http_requests_received_total{code=~"5.."}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          component: backend
+        annotations:
+          summary: "Taux d'erreur HTTP 5xx élevé"
+          description: "{{ $value | humanizePercentage }} des requêtes échouent avec erreur 5xx."
+      
+      # 5. Hangfire Jobs
+      - alert: HangfireJobsStuck
+        expr: hangfire_jobs_processing > 10
+        for: 30m
+        labels:
+          severity: warning
+          component: jobs
+        annotations:
+          summary: "Jobs Hangfire bloqués"
+          description: "{{ $value }} jobs en cours depuis plus de 30 minutes."
+      
+      - alert: DeadLetterQueueGrowing
+        expr: hangfire_dead_letter_queue_size > 10
+        for: 10m
+        labels:
+          severity: warning
+          component: jobs
+        annotations:
+          summary: "Dead-Letter Queue croissante"
+          description: "{{ $value }} jobs en dead-letter queue. Investigation requise."
