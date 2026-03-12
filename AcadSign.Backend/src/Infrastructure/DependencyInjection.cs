@@ -8,6 +8,10 @@ using AcadSign.Backend.Infrastructure.Pdf;
 using AcadSign.Backend.Infrastructure.QrCode;
 using AcadSign.Backend.Infrastructure.Security;
 using AcadSign.Backend.Infrastructure.Storage;
+using AcadSign.Backend.Infrastructure.Services;
+using AcadSign.Backend.Application.Services;
+using AcadSign.Backend.Application.Common.Models;
+using AcadSign.Backend.Application.Interfaces;
 using Minio;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.AuthenticatedEncryption;
@@ -31,10 +35,12 @@ public static class DependencyInjection
         builder.Services.AddScoped<ISaveChangesInterceptor, AuditableEntityInterceptor>();
         builder.Services.AddScoped<ISaveChangesInterceptor, DispatchDomainEventsInterceptor>();
         builder.Services.AddScoped<ISaveChangesInterceptor, EncryptionInterceptor>();
+        builder.Services.AddScoped<IMaterializationInterceptor, DecryptionInterceptor>();
 
         builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
         {
             options.AddInterceptors(sp.GetServices<ISaveChangesInterceptor>());
+            options.AddInterceptors(sp.GetServices<IMaterializationInterceptor>());
             options.UseNpgsql(connectionString);
             options.ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
         });
@@ -58,6 +64,10 @@ public static class DependencyInjection
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddTransient<IIdentityService, IdentityService>();
 
+        builder.Services.AddHttpClient();
+
+        builder.Services.AddScoped<ISisAttestationExportClient, SisAttestationExportClient>();
+
         // Configure Data Protection API for PII encryption
         builder.Services.AddDataProtection()
             .PersistKeysToDbContext<ApplicationDbContext>()
@@ -75,8 +85,30 @@ public static class DependencyInjection
         // Register QR Code Service
         builder.Services.AddSingleton<IQrCodeService, QrCodeService>();
 
+        // Register attestation template renderer
+        builder.Services.AddScoped<IAttestationTemplateRenderer, AttestationTemplateRenderer>();
+
         // Register PDF Generation Service
         builder.Services.AddScoped<IPdfGenerationService, PdfGenerationService>();
+
+        // Epic 6 - public verification
+        builder.Services.AddScoped<ICertificateValidationService, CertificateValidationService>();
+        builder.Services.AddScoped<ISignatureVerificationService, SignatureVerificationService>();
+        builder.Services.AddScoped<IVerificationReportService, AcadSign.Backend.Infrastructure.Pdf.VerificationReportService>();
+
+        // Epic 8 - audit trail
+        builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+        builder.Services.AddScoped<IAuditLogService, AuditLogService>();
+
+        // Epic 9 - email notifications
+        builder.Services.AddScoped<IStudentRepository, StudentRepository>();
+        builder.Services.AddScoped<IEmailService, EmailService>();
+        builder.Services.AddScoped<IStorageService, S3StorageAdapter>();
+        builder.Services.AddScoped<AcadSign.Backend.Application.BackgroundJobs.EmailNotificationJob>();
+
+        // Epic 5 repositories/services
+        builder.Services.AddMemoryCache();
+        builder.Services.AddScoped<CachedPdfGenerationService>();
 
         // Configure MinIO Client
         var minioConfig = builder.Configuration.GetSection("MinIO");
@@ -99,6 +131,18 @@ public static class DependencyInjection
 
         // Register Template Repository
         builder.Services.AddScoped<ITemplateRepository, TemplateRepository>();
+
+        // Epic 5 repositories/services
+        builder.Services.AddScoped<AcadSign.Backend.Application.Services.IBatchRepository, BatchRepository>();
+        builder.Services.AddScoped<AcadSign.Backend.Application.Services.IDeadLetterQueueRepository, DeadLetterQueueRepository>();
+        builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
+        builder.Services.AddScoped<BatchProcessingService>();
+        builder.Services.AddScoped<DeadLetterQueueService>();
+
+        builder.Services.AddScoped<IAttestationBatchGenerationService, AttestationBatchGenerationService>();
+
+        // Register Auth Service
+        builder.Services.AddScoped<AcadSign.Backend.Application.Auth.Services.IAuthService, AcadSign.Backend.Application.Auth.Services.AuthService>();
 
         builder.Services.AddAuthorization(options =>
             options.AddPolicy(Policies.CanPurge, policy => policy.RequireRole(Roles.Administrator)));

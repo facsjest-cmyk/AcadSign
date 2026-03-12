@@ -7,7 +7,7 @@ namespace AcadSign.Backend.Web.Controllers;
 
 [ApiController]
 [Route("api/v1/admin/dead-letter-queue")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Administrator")]
 public class DeadLetterQueueController : ControllerBase
 {
     private readonly DeadLetterQueueService _dlqService;

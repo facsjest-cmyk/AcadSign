@@ -15,6 +15,9 @@
     <PackageReference Include="OpenIddict.EntityFrameworkCore" />
     <PackageReference Include="QRCoder" />
     <PackageReference Include="QuestPDF" />
+    <PackageReference Include="Newtonsoft.Json" />
+    <PackageReference Include="MimeKit" />
+    <PackageReference Include="MailKit" />
   </ItemGroup>
 
   <ItemGroup>

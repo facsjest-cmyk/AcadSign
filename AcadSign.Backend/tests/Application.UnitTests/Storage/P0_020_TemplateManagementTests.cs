@@ -69,9 +69,7 @@ public class P0_020_TemplateManagementTests
     public async Task Template_ShouldValidate_Format()
     {
         // Arrange
-        var templateName = "invalid-template";
         var invalidContent = new byte[] { 0x00, 0x01, 0x02 }; // Not a valid template
-        var institutionId = Guid.NewGuid();
 
         // Act
         var isValid = ValidateTemplateFormat(invalidContent);
@@ -117,7 +115,6 @@ public class P0_020_TemplateManagementTests
     public async Task Template_ShouldPreview_BeforeActivation()
     {
         // Arrange
-        var templateName = "new-template";
         var templateContent = GenerateMockTemplate();
         var institutionId = Guid.NewGuid();
 

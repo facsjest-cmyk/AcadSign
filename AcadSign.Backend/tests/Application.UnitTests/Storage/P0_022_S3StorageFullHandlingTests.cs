@@ -31,7 +31,7 @@ public class P0_022_S3StorageFullHandlingTests
         var document = _documentFactory.Unsigned();
         var pdfContent = GenerateMockPDF();
         var storageCapacity = 100 * 1024 * 1024; // 100 MB
-        var currentUsage = 99 * 1024 * 1024; // 99 MB used
+        var currentUsage = storageCapacity - 3; // leave < pdfContent.Length bytes available
 
         // Act
         var uploadResult = await TryUploadToS3(pdfContent, storageCapacity, currentUsage);
@@ -93,7 +93,6 @@ public class P0_022_S3StorageFullHandlingTests
     public async Task S3Storage_ShouldAlert_At80PercentCapacity()
     {
         // Arrange
-        var bucketName = "acadsign-documents";
         var totalCapacity = 100 * 1024 * 1024; // 100 MB
         var usedCapacity = 81 * 1024 * 1024; // 81 MB (81%)
 
@@ -127,7 +126,7 @@ public class P0_022_S3StorageFullHandlingTests
 
         // Act
         var uploadResult = await TryUploadToS3(pdfContent, 100, 100);
-        var queuedJob = await GetQueuedUploadJob(document.Id);
+        var queuedJob = await GetQueuedUploadJob(document.PublicId);
 
         // Assert
         uploadResult.Success.Should().BeFalse();
@@ -253,7 +252,7 @@ public class P0_022_S3StorageFullHandlingTests
         }
 
         // Unsigned documents can be deleted after retention period
-        return document.Created < DateTime.UtcNow.AddDays(-retentionDays);
+        return document.Created < DateTimeOffset.UtcNow.AddDays(-retentionDays);
     }
 
     private class UploadResult

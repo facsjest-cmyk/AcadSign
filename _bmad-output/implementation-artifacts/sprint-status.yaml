@@ -113,3 +113,12 @@ development_status:
   10-3-configurer-alerting-certificate-expiry-failures-storage: review
   10-4-creer-admin-dashboard-avec-metriques-temps-reel: review
   epic-10-retrospective: optional
+
+  epic-11: in-progress
+  11-1-backend-sis-attestation-export-client: ready-for-dev
+  11-2-backend-batch-generation-attestations-from-sis-and-store-s3: ready-for-dev
+  11-3-backend-pending-documents-real-data-for-desktop: review
+  11-4-desktop-ui-trigger-attestation-generation-and-refresh-list: review
+  11-5-desktop-export-generated-attestations-to-local-folder: review
+  11-6-template-based-attestation-rendering-with-background-assets: review
+  epic-11-retrospective: optional

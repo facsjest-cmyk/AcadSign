@@ -7,9 +7,14 @@ public static class WebApplicationExtensions
     private static RouteGroupBuilder MapGroup(this WebApplication app, EndpointGroupBase group)
     {
         var groupName = group.GroupName ?? group.GetType().Name;
+        var groupSlug = groupName.ToLowerInvariant();
+
+        var prefix = groupName.Equals("Authorization", StringComparison.OrdinalIgnoreCase)
+            ? "/connect"
+            : $"/api/v1/{groupSlug}";
 
         return app
-            .MapGroup($"/api/{groupName}")
+            .MapGroup(prefix)
             .WithTags(groupName);
     }
 

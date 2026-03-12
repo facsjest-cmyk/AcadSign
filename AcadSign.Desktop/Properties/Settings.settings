@@ -11,5 +11,11 @@
     <Setting Name="Language" Type="System.String" Scope="User">
       <Value Profile="(Default)">Français</Value>
     </Setting>
+    <Setting Name="RememberMe" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="RememberedUsername" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
   </Settings>
 </SettingsFile>

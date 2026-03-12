@@ -2,24 +2,30 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Hangfire;
 using AcadSign.Backend.Domain.Entities;
+using AcadSign.Backend.Domain.Enums;
 using AcadSign.Backend.Application.Services;
+using AcadSign.Backend.Application.Common.Interfaces;
+using AcadSign.Backend.Application.Common.Models;
 using System.Security.Claims;
 
 namespace AcadSign.Backend.Web.Controllers;
 
 [ApiController]
 [Route("api/v1/documents")]
-[Authorize(Roles = "API Client,Admin")]
+[Authorize(Roles = "API Client,Administrator")]
 public class BatchController : ControllerBase
 {
     private readonly IBatchRepository _batchRepo;
+    private readonly IAuditLogService _auditService;
     private readonly ILogger<BatchController> _logger;
     
     public BatchController(
         IBatchRepository batchRepo,
+        IAuditLogService auditService,
         ILogger<BatchController> logger)
     {
         _batchRepo = batchRepo;
+        _auditService = auditService;
         _logger = logger;
     }
     
@@ -49,7 +55,15 @@ public class BatchController : ControllerBase
             EstimatedCompletionAt = estimatedCompletion,
             ProgressPercentage = batch.TotalDocuments > 0 
                 ? (double)batch.ProcessedDocuments / batch.TotalDocuments * 100 
-                : 0
+                : 0,
+            Documents = batch.Documents.Select(d => new DocumentStatusDto
+            {
+                DocumentId = d.DocumentId,
+                StudentId = d.StudentId,
+                Status = d.Status.ToString(),
+                DownloadUrl = d.DocumentId.HasValue ? $"/api/v1/documents/{d.DocumentId}/download" : null,
+                Error = d.ErrorMessage
+            }).ToList()
         });
     }
     
@@ -107,6 +121,12 @@ public class BatchController : ControllerBase
         };
         
         await _batchRepo.AddAsync(batch);
+
+        await _auditService.LogEventAsync(AuditEventType.BATCH_CREATED, null, new
+        {
+            batchId = batchId,
+            totalDocuments = request.Documents.Count
+        });
         
         BackgroundJob.Enqueue<BatchProcessingService>(
             x => x.ProcessBatchAsync(batchId, request.Documents));
@@ -127,19 +147,7 @@ public class BatchController : ControllerBase
 public class CreateBatchRequest
 {
     public Guid? BatchId { get; set; }
-    public List<DocumentGenerationRequest> Documents { get; set; } = new();
-}
-
-public class DocumentGenerationRequest
-{
-    public string StudentId { get; set; } = string.Empty;
-    public string FirstName { get; set; } = string.Empty;
-    public string LastName { get; set; } = string.Empty;
-    public string CIN { get; set; } = string.Empty;
-    public string CNE { get; set; } = string.Empty;
-    public DocumentType DocumentType { get; set; }
-    public string ProgramName { get; set; } = string.Empty;
-    public string AcademicYear { get; set; } = string.Empty;
+    public List<BatchDocumentRequest> Documents { get; set; } = new();
 }
 
 public class CreateBatchResponse
@@ -163,4 +171,15 @@ public class BatchStatusResponse
     public DateTime? CompletedAt { get; set; }
     public DateTime? EstimatedCompletionAt { get; set; }
     public double ProgressPercentage { get; set; }
+
+    public List<DocumentStatusDto> Documents { get; set; } = new();
+}
+
+public class DocumentStatusDto
+{
+    public Guid? DocumentId { get; set; }
+    public string StudentId { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public string? DownloadUrl { get; set; }
+    public string? Error { get; set; }
 }

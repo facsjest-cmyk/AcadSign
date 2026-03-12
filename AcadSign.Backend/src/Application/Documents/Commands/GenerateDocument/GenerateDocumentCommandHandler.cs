@@ -1,4 +1,6 @@
 using AcadSign.Backend.Application.Common.Interfaces;
+using Microsoft.Extensions.Logging;
+using MediatR;
 
 namespace AcadSign.Backend.Application.Documents.Commands.GenerateDocument;
 

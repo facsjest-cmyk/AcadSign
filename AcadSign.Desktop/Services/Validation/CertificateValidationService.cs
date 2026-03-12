@@ -2,7 +2,12 @@ using Microsoft.Extensions.Logging;
 using Org.BouncyCastle.Ocsp;
 using Org.BouncyCastle.X509;
 using Org.BouncyCastle.Security;
+using Org.BouncyCastle.Asn1.Oiw;
+using Org.BouncyCastle.Asn1.X509;
 using System.Security.Cryptography.X509Certificates;
+using System;
+using System.Threading.Tasks;
+using System.Net.Http;
 
 namespace AcadSign.Desktop.Services.Validation;
 
@@ -70,7 +75,7 @@ public class CertificateValidationService : ICertificateValidationService
         
         var ocspReqGen = new OcspReqGenerator();
         var certId = new CertificateID(
-            CertificateID.HashSha1,
+            new AlgorithmIdentifier(OiwObjectIdentifiers.IdSha1),
             bcIssuerCert,
             bcCert.SerialNumber);
         ocspReqGen.AddRequest(certId);

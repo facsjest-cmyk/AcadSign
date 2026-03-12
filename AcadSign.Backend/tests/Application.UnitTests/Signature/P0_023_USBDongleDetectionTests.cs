@@ -31,7 +31,7 @@ public class P0_023_USBDongleDetectionTests
         var dongleConnected = true;
 
         // Act
-        var isDetected = await DetectUSBDongle();
+        var isDetected = await DetectUSBDongle(dongleConnected);
 
         // Assert
         isDetected.Should().BeTrue("USB dongle should be detected when connected");

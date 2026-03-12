@@ -30,8 +30,6 @@ public class P0_013_MFARequiredTests
     {
         // Arrange
         var adminUserId = "admin-user-123";
-        var password = "SecurePassword123!";
-        var mfaEnabled = true;
 
         // Act
         var requiresMFA = CheckIfMFARequired(adminUserId, "Admin");

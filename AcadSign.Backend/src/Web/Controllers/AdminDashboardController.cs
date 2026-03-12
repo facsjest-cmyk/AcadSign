@@ -6,7 +6,7 @@ namespace AcadSign.Backend.Web.Controllers;
 
 [ApiController]
 [Route("admin")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Administrator")]
 public class AdminDashboardController : ControllerBase
 {
     private readonly IDashboardMetricsService _metricsService;
@@ -40,10 +40,10 @@ public class AdminDashboardController : ControllerBase
 
 public class DashboardMetrics
 {
-    public RealtimeMetrics Realtime { get; set; }
-    public ServiceStatus Services { get; set; }
-    public CertificateStatus Certificate { get; set; }
-    public HangfireStatus Hangfire { get; set; }
+    public RealtimeMetrics Realtime { get; set; } = null!;
+    public ServiceStatus Services { get; set; } = null!;
+    public CertificateStatus Certificate { get; set; } = null!;
+    public HangfireStatus Hangfire { get; set; } = null!;
 }
 
 public class RealtimeMetrics
@@ -59,25 +59,25 @@ public class RealtimeMetrics
 
 public class ServiceStatus
 {
-    public ServiceHealth BackendAPI { get; set; }
-    public ServiceHealth PostgreSQL { get; set; }
-    public ServiceHealth MinIO { get; set; }
-    public ServiceHealth Seq { get; set; }
+    public ServiceHealth BackendAPI { get; set; } = null!;
+    public ServiceHealth PostgreSQL { get; set; } = null!;
+    public ServiceHealth MinIO { get; set; } = null!;
+    public ServiceHealth Seq { get; set; } = null!;
 }
 
 public class ServiceHealth
 {
-    public string Status { get; set; }
+    public string Status { get; set; } = string.Empty;
     public double UptimePercent { get; set; }
-    public string Message { get; set; }
+    public string Message { get; set; } = string.Empty;
 }
 
 public class CertificateStatus
 {
-    public string Issuer { get; set; }
+    public string Issuer { get; set; } = string.Empty;
     public DateTime ValidUntil { get; set; }
     public int DaysRemaining { get; set; }
-    public string Status { get; set; }
+    public string Status { get; set; } = string.Empty;
 }
 
 public class HangfireStatus

@@ -4,9 +4,12 @@ namespace AcadSign.Backend.Application.Services;
 
 public interface IBatchRepository
 {
-    Task<Batch> GetByIdAsync(Guid id);
+    Task<Batch?> GetByIdAsync(Guid id);
     Task AddAsync(Batch batch);
     Task UpdateAsync(Batch batch);
     Task IncrementProcessedCountAsync(Guid batchId);
     Task IncrementFailedCountAsync(Guid batchId);
+
+    Task<BatchDocument?> GetBatchDocumentAsync(Guid batchId, string studentId);
+    Task UpdateBatchDocumentAsync(BatchDocument batchDocument);
 }

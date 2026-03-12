@@ -1,6 +1,7 @@
 using Hangfire;
 using Microsoft.Extensions.Logging;
 using AcadSign.Backend.Domain.Entities;
+using AcadSign.Backend.Application.BackgroundJobs;
 using System.Text.Json;
 
 namespace AcadSign.Backend.Application.Services;

@@ -1,3 +1,5 @@
+using System.Linq;
+
 namespace AcadSign.Desktop.Services.Navigation;
 
 public interface INavigationService

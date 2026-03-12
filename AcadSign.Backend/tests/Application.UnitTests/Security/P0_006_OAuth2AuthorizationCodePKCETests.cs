@@ -31,7 +31,6 @@ public class P0_006_OAuth2AuthorizationCodePKCETests
     {
         // Arrange
         var userId = "desktop-app-user";
-        var expectedToken = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...";
 
         _mockIdentityService
             .Setup(x => x.CreateUserAsync(It.IsAny<string>(), It.IsAny<string>()))

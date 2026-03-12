@@ -1,4 +1,7 @@
 using AcadSign.Desktop.Models;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace AcadSign.Desktop.Services.Batch;
 

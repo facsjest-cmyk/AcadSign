@@ -3,9 +3,10 @@ using iText.Signatures;
 using iText.Kernel.Geom;
 using Microsoft.Extensions.Logging;
 using AcadSign.Desktop.Services.Dongle;
-using Org.BouncyCastle.Crypto;
-using Org.BouncyCastle.Pkcs;
 using System.Security.Cryptography.X509Certificates;
+using System;
+using System.IO;
+using System.Threading.Tasks;
 
 namespace AcadSign.Desktop.Services.Signature;
 
@@ -33,44 +34,33 @@ public class PadesSignatureService : ISignatureService
     
     public async Task<byte[]> SignPdfAsync(byte[] unsignedPdf, string pin)
     {
-        return await Task.Run(() =>
-        {
-            try
-            {
-                _logger.LogInformation("Starting PAdES signature process");
-                
-                var cert = _dongleService.GetCertificateAsync(pin).Result;
-                
-                using var reader = new PdfReader(new MemoryStream(unsignedPdf));
-                using var outputStream = new MemoryStream();
-                
-                var signer = new PdfSigner(reader, outputStream, new StampingProperties());
-                
-                ConfigureSignatureAppearance(signer);
-                
-                var chain = new Org.BouncyCastle.X509.X509Certificate[] { };
-                
-                var externalSignature = CreateExternalSignature(cert);
-                
-                signer.SignDetached(
-                    externalSignature,
-                    chain,
-                    null,
-                    null,
-                    null,
-                    0,
-                    PdfSigner.CryptoStandard.CADES);
-                
-                _logger.LogInformation("PDF signed successfully with PAdES-B-LT");
-                
-                return outputStream.ToArray();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to sign PDF");
-                throw;
-            }
-        });
+        _logger.LogInformation("Starting PAdES signature process");
+
+        var cert = await _dongleService.GetCertificateAsync(pin);
+
+        using var reader = new PdfReader(new MemoryStream(unsignedPdf));
+        using var outputStream = new MemoryStream();
+
+        var signer = new PdfSigner(reader, outputStream, new StampingProperties());
+        ConfigureSignatureAppearance(signer);
+
+        // TODO: Fix certificate chain conversion for iText7
+        // var chain = new Org.BouncyCastle.X509.X509Certificate[] { };
+
+        var externalSignature = CreateExternalSignature(cert);
+
+        signer.SignDetached(
+            externalSignature,
+            null, // chain - temporarily null until BouncyCastle conversion is fixed
+            null,
+            null,
+            null,
+            0,
+            PdfSigner.CryptoStandard.CADES);
+
+        _logger.LogInformation("PDF signed successfully with PAdES-B-LT");
+
+        return outputStream.ToArray();
     }
     
     public async Task<bool> ValidateSignatureAsync(byte[] signedDocument)
@@ -81,16 +71,10 @@ public class PadesSignatureService : ISignatureService
     
     private void ConfigureSignatureAppearance(PdfSigner signer)
     {
-        var appearance = signer.GetSignatureAppearance();
-        
-        appearance.SetReason("Document académique officiel");
-        appearance.SetLocation("Casablanca, Maroc");
-        appearance.SetLayer2Text("Signé électroniquement par Université Hassan II\n" +
-                                $"Date: {DateTime.Now:dd/MM/yyyy HH:mm:ss}");
-        
-        appearance.SetPageRect(new Rectangle(36, 36, 200, 100));
-        appearance.SetPageNumber(1);
-        
+        signer.SetReason("Document académique officiel");
+        signer.SetLocation("Casablanca, Maroc");
+        signer.SetPageRect(new Rectangle(36, 36, 200, 100));
+        signer.SetPageNumber(1);
         signer.SetFieldName("Signature1");
     }
     
@@ -109,5 +93,11 @@ public class PadesSignatureService : ISignatureService
         {
             return new byte[256];
         }
+        
+        public string GetDigestAlgorithmName() => "SHA-256";
+        
+        public string GetSignatureAlgorithmName() => "RSA";
+
+        public ISignatureMechanismParams GetSignatureMechanismParameters() => null!;
     }
 }

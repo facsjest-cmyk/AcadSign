@@ -7,7 +7,7 @@ namespace AcadSign.Backend.Web.Controllers;
 
 [ApiController]
 [Route("api/v1/compliance")]
-[Authorize(Roles = "Admin")]
+[Authorize(Roles = "Administrator")]
 public class ComplianceController : ControllerBase
 {
     private readonly IComplianceReportService _reportService;

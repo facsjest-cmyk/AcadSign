@@ -1,6 +1,7 @@
 using AcadSign.Backend.Application.Common.Interfaces;
 using AcadSign.Backend.Application.Common.Models;
 using AcadSign.Backend.Domain.Entities;
+using AcadSign.Backend.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace AcadSign.Backend.Infrastructure.Data.Repositories;

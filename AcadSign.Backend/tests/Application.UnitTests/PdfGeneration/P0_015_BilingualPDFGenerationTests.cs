@@ -165,7 +165,7 @@ public class P0_015_BilingualPDFGenerationTests
         // Simplified PDF generation for testing
         // In production, this would use QuestPDF
         var pdfHeader = new byte[] { 0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x34 }; // %PDF-1.4
-        var mockContent = System.Text.Encoding.UTF8.GetBytes($"Attestation de Scolarité\nشهادة التمدرس\n{student.FirstName} {student.LastName}\n{student.CNE}");
+        var mockContent = System.Text.Encoding.UTF8.GetBytes($"Attestation de Scolarité\nUniversité Hassan II\nشهادة التمدرس\nجامعة الحسن الثاني\n{student.FirstName} {student.LastName}\n{student.CNE}");
         return pdfHeader.Concat(mockContent).ToArray();
     }
 

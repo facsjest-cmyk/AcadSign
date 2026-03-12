@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Minio;
 using Minio.DataModel.Args;
+using Minio.DataModel.Encryption;
 using Minio.Exceptions;
 
 namespace AcadSign.Backend.Infrastructure.Storage;
@@ -60,36 +61,77 @@ public class S3StorageService : IS3StorageService
 
         using var stream = new MemoryStream(pdfData);
 
-        var sse = new SSES3();
+        try
+        {
+            var sse = new SSES3();
 
-        await _minioClient.PutObjectAsync(new PutObjectArgs()
-            .WithBucket(_bucketName)
-            .WithObject(objectName)
-            .WithStreamData(stream)
-            .WithObjectSize(stream.Length)
-            .WithContentType("application/pdf")
-            .WithServerSideEncryption(sse));
+            await _minioClient.PutObjectAsync(new PutObjectArgs()
+                .WithBucket(_bucketName)
+                .WithObject(objectName)
+                .WithStreamData(stream)
+                .WithObjectSize(stream.Length)
+                .WithContentType("application/pdf")
+                .WithServerSideEncryption(sse));
 
-        _logger.LogInformation("Document {DocumentId} uploaded to {ObjectName}", documentId, objectName);
+            await _minioClient.StatObjectAsync(new StatObjectArgs()
+                .WithBucket(_bucketName)
+                .WithObject(objectName));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "SSE-S3 upload failed for {ObjectName}. Retrying upload without SSE.", objectName);
+
+            stream.Position = 0;
+
+            await _minioClient.PutObjectAsync(new PutObjectArgs()
+                .WithBucket(_bucketName)
+                .WithObject(objectName)
+                .WithStreamData(stream)
+                .WithObjectSize(stream.Length)
+                .WithContentType("application/pdf"));
+
+            await _minioClient.StatObjectAsync(new StatObjectArgs()
+                .WithBucket(_bucketName)
+                .WithObject(objectName));
+        }
+
+        _logger.LogInformation("Document {DocumentId} uploaded to bucket {BucketName} as {ObjectName}", documentId, _bucketName, objectName);
 
         return objectName;
     }
 
     public async Task<byte[]> DownloadDocumentAsync(string documentId)
     {
-        var objectName = GetObjectPath(documentId);
+        _logger.LogInformation("Downloading document '{DocumentId}' from bucket {BucketName}", documentId, _bucketName);
 
-        using var memoryStream = new MemoryStream();
+        var sse = new SSES3();
 
-        await _minioClient.GetObjectAsync(new GetObjectArgs()
-            .WithBucket(_bucketName)
-            .WithObject(objectName)
-            .WithCallbackStream(stream =>
+        foreach (var objectName in GetCandidateObjectPaths(documentId))
+        {
+            try
             {
-                stream.CopyTo(memoryStream);
-            }));
+                _logger.LogInformation("Trying object key {ObjectName}", objectName);
+                using var memoryStream = new MemoryStream();
 
-        return memoryStream.ToArray();
+                await _minioClient.GetObjectAsync(new GetObjectArgs()
+                    .WithBucket(_bucketName)
+                    .WithObject(objectName)
+                    .WithServerSideEncryption(sse)
+                    .WithCallbackStream(stream =>
+                    {
+                        stream.CopyTo(memoryStream);
+                    }));
+
+                return memoryStream.ToArray();
+            }
+            catch (ObjectNotFoundException)
+            {
+                _logger.LogInformation("Object key {ObjectName} not found", objectName);
+                // Try next candidate
+            }
+        }
+
+        throw new ObjectNotFoundException();
     }
 
     public async Task<string> GeneratePresignedDownloadUrlAsync(string documentId, int expiryMinutes = 60)
@@ -136,7 +178,35 @@ public class S3StorageService : IS3StorageService
 
     private string GetObjectPath(string documentId)
     {
-        var now = DateTime.UtcNow;
-        return $"{now.Year:D4}/{now.Month:D2}/{documentId}.pdf";
+        if (documentId.Contains('/') || documentId.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+        {
+            return documentId;
+        }
+
+        return $"{documentId}.pdf";
+    }
+
+    private IEnumerable<string> GetCandidateObjectPaths(string documentId)
+    {
+        // 1) Exact path or explicit .pdf key
+        yield return GetObjectPath(documentId);
+
+        // 2) If caller passed a full key with .pdf, also try without extension
+        if (documentId.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+        {
+            var withoutExt = documentId[..^4];
+            yield return GetObjectPath(withoutExt);
+        }
+
+        // 3) Legacy path (previous implementation used year/month folders)
+        if (!documentId.Contains('/'))
+        {
+            var now = DateTime.UtcNow;
+            var normalized = documentId.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)
+                ? documentId[..^4]
+                : documentId;
+
+            yield return $"{now.Year:D4}/{now.Month:D2}/{normalized}.pdf";
+        }
     }
 }

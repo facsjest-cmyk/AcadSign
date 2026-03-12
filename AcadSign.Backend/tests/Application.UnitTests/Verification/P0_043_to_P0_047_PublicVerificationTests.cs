@@ -45,7 +45,7 @@ public class P0_043_to_P0_047_PublicVerificationTests
     public async Task P0_044_ScanQRCode_AndVerifySignature()
     {
         var document = _documentFactory.Signed();
-        var qrCodeUrl = $"https://acadsign.uh2.ac.ma/verify/{document.Id}";
+        var qrCodeUrl = $"https://acadsign.uh2.ac.ma/verify/{document.PublicId}";
         
         var verificationResult = await VerifyDocumentFromQR(qrCodeUrl);
         
@@ -73,7 +73,7 @@ public class P0_043_to_P0_047_PublicVerificationTests
     public async Task P0_046_DisplayDocumentMetadata()
     {
         var document = _documentFactory.Signed();
-        var metadata = await GetDocumentMetadata(document.Id);
+        var metadata = await GetDocumentMetadata(document.PublicId);
         
         metadata.Should().NotBeNull();
         metadata.DocumentType.Should().NotBeNullOrEmpty();
@@ -90,7 +90,7 @@ public class P0_043_to_P0_047_PublicVerificationTests
         var document = _documentFactory.Signed();
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         
-        await VerifyDocument(document.Id);
+        await VerifyDocument(document.PublicId);
         
         stopwatch.Stop();
         stopwatch.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(2), 

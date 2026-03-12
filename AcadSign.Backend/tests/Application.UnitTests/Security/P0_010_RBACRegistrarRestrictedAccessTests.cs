@@ -152,7 +152,6 @@ public class P0_010_RBACRegistrarRestrictedAccessTests
     {
         // Arrange
         var registrarUserId = "registrar-user-123";
-        var adminEndpoint = "/api/admin/users";
 
         _mockIdentityService
             .Setup(x => x.IsInRoleAsync(registrarUserId, "Admin"))

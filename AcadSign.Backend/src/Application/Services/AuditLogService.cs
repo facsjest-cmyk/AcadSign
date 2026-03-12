@@ -8,7 +8,7 @@ namespace AcadSign.Backend.Application.Services;
 
 public interface IAuditLogService
 {
-    Task LogEventAsync(AuditEventType eventType, Guid? documentId, object? metadata = null);
+    Task LogEventAsync(AuditEventType eventType, Guid? documentId, object? metadata = null, Guid? userIdOverride = null);
 }
 
 public class AuditLogService : IAuditLogService
@@ -27,7 +27,7 @@ public class AuditLogService : IAuditLogService
         _logger = logger;
     }
     
-    public async Task LogEventAsync(AuditEventType eventType, Guid? documentId, object? metadata = null)
+    public async Task LogEventAsync(AuditEventType eventType, Guid? documentId, object? metadata = null, Guid? userIdOverride = null)
     {
         try
         {
@@ -38,7 +38,7 @@ public class AuditLogService : IAuditLogService
                 Id = Guid.NewGuid(),
                 DocumentId = documentId,
                 EventType = eventType,
-                UserId = GetCurrentUserId(httpContext),
+                UserId = userIdOverride ?? GetCurrentUserId(httpContext),
                 IpAddress = GetIpAddress(httpContext),
                 UserAgent = GetUserAgent(httpContext),
                 CertificateSerial = GetCertificateSerial(metadata),

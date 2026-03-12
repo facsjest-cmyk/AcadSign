@@ -3,8 +3,10 @@ using AcadSign.Backend.Domain.Entities;
 using AcadSign.Backend.Infrastructure.Identity;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using OpenIddict.Abstractions;
 
 namespace AcadSign.Backend.Infrastructure.Data;
 
@@ -43,8 +45,7 @@ public class ApplicationDbContextInitialiser
         try
         {
             // See https://jasontaylor.dev/ef-core-database-initialisation-strategies
-            await _context.Database.EnsureDeletedAsync();
-            await _context.Database.EnsureCreatedAsync();
+            await _context.Database.MigrateAsync();
         }
         catch (Exception ex)
         {
@@ -100,7 +101,10 @@ public class ApplicationDbContextInitialiser
         }
 
         // Seed OpenIddict scopes and clients
-        await OpenIddictSeeder.SeedAsync(_serviceProvider);
+        if (_serviceProvider.GetService<IOpenIddictScopeManager>() != null)
+        {
+            await OpenIddictSeeder.SeedAsync(_serviceProvider);
+        }
 
         // Default data
         // Seed, if necessary
@@ -120,5 +124,80 @@ public class ApplicationDbContextInitialiser
 
             await _context.SaveChangesAsync();
         }
+
+        var seedAdmin = await _context.AppUsers.FirstOrDefaultAsync(u => u.Username == "admin");
+        if (seedAdmin == null)
+        {
+            _context.AppUsers.Add(new AppUser
+            {
+                Id = Guid.NewGuid(),
+                Username = "admin",
+                Email = "admin@acadsign.local",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
+                Role = UserRole.Admin,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            seedAdmin.IsActive = true;
+            seedAdmin.Role = UserRole.Admin;
+            if (string.IsNullOrWhiteSpace(seedAdmin.Email))
+            {
+                seedAdmin.Email = "admin@acadsign.local";
+            }
+        }
+
+        var seedApiClient = await _context.AppUsers.FirstOrDefaultAsync(u => u.Username == "api-client");
+        if (seedApiClient == null)
+        {
+            _context.AppUsers.Add(new AppUser
+            {
+                Id = Guid.NewGuid(),
+                Username = "api-client",
+                Email = "api-client@acadsign.local",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("ApiClient123!"),
+                Role = UserRole.ApiClient,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            seedApiClient.IsActive = true;
+            seedApiClient.Role = UserRole.ApiClient;
+            if (string.IsNullOrWhiteSpace(seedApiClient.Email))
+            {
+                seedApiClient.Email = "api-client@acadsign.local";
+            }
+        }
+
+        var devStudentId = Guid.Parse("d3b3c1a2-7c68-4c1f-9f25-0d2e4d2c5f3a");
+        var devStudent = await _context.Students.FirstOrDefaultAsync(s => s.PublicId == devStudentId);
+        if (devStudent == null)
+        {
+            _context.Students.Add(new Student
+            {
+                PublicId = devStudentId,
+                CIN = "DEV-CIN",
+                CNE = "DEV-CNE",
+                Email = "student@example.com",
+                PhoneNumber = null,
+                FirstName = "Dev",
+                LastName = "Student",
+                DateOfBirth = new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                InstitutionId = Guid.Empty
+            });
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(devStudent.Email))
+            {
+                devStudent.Email = "student@example.com";
+            }
+        }
+
+        await _context.SaveChangesAsync();
     }
 }

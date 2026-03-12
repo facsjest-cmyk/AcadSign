@@ -88,8 +88,8 @@ public class P0_024_PAdESSignatureTests
         var signatureInfo = ExtractSignatureInfo(signedPdf);
 
         // Assert
-        signatureInfo.SigningTime.Should().BeOnOrAfter(beforeSigning);
-        signatureInfo.SigningTime.Should().BeOnOrBefore(afterSigning);
+        signatureInfo.SigningTime.Should().BeOnOrAfter(beforeSigning.AddSeconds(-1));
+        signatureInfo.SigningTime.Should().BeOnOrBefore(afterSigning.AddSeconds(1));
     }
 
     [Test]

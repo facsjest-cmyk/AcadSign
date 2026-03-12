@@ -1,6 +1,11 @@
 using Refit;
 using AcadSign.Desktop.Models;
 using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Net.Http;
+using System.IO;
 
 namespace AcadSign.Desktop.Services.Api;
 
@@ -25,6 +30,20 @@ public class RefitApiClientService : IApiClientService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to fetch pending documents");
+            throw;
+        }
+    }
+
+    public async Task<AttestationBatchGenerationResponse> GenerateAttestationsFromSisAsync()
+    {
+        try
+        {
+            _logger.LogInformation("Triggering SIS attestation batch generation");
+            return await _api.GenerateAttestationsFromSisAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to trigger SIS attestation batch generation");
             throw;
         }
     }
@@ -66,6 +85,34 @@ public class RefitApiClientService : IApiClientService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to upload signed document {DocumentId}", documentId);
+            throw;
+        }
+    }
+
+    public async Task<DownloadUrlResponse> GetDownloadUrlAsync(Guid documentId)
+    {
+        try
+        {
+            _logger.LogInformation("Getting download URL for document {DocumentId}", documentId);
+            return await _api.GetDownloadUrlAsync(documentId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get download URL for document {DocumentId}", documentId);
+            throw;
+        }
+    }
+
+    public async Task ResendEmailAsync(Guid documentId)
+    {
+        try
+        {
+            _logger.LogInformation("Requesting resend email for document {DocumentId}", documentId);
+            await _api.ResendEmailAsync(documentId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to resend email for document {DocumentId}", documentId);
             throw;
         }
     }

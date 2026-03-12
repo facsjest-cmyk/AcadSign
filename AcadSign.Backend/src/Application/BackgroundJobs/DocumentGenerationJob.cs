@@ -1,7 +1,10 @@
 using Hangfire;
 using Microsoft.Extensions.Logging;
 using AcadSign.Backend.Application.Services;
+using AcadSign.Backend.Application.Common.Interfaces;
+using AcadSign.Backend.Application.Common.Models;
 using AcadSign.Backend.Domain.Entities;
+using AcadSign.Backend.Domain.Enums;
 
 namespace AcadSign.Backend.Application.BackgroundJobs;
 
@@ -20,7 +23,7 @@ public class DocumentGenerationJob : BaseJob
     }
     
     [AutomaticRetry(Attempts = 5)]
-    public async Task GenerateDocumentAsync(Guid documentId, DocumentType documentType, object studentData)
+    public async Task GenerateDocumentAsync(Guid documentId, DocumentType documentType, StudentData studentData)
     {
         try
         {

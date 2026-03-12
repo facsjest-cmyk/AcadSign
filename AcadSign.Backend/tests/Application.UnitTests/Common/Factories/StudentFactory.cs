@@ -15,6 +15,7 @@ public class StudentFactory
     {
         _faker = new Faker<Student>()
             .RuleFor(s => s.Id, f => f.Random.Int(1, 100000))
+            .RuleFor(s => s.PublicId, f => Guid.NewGuid())
             .RuleFor(s => s.CIN, f => f.Random.AlphaNumeric(8).ToUpper())
             .RuleFor(s => s.CNE, f => $"E{f.Random.Number(10000000, 99999999)}")
             .RuleFor(s => s.FirstName, f => f.Name.FirstName())

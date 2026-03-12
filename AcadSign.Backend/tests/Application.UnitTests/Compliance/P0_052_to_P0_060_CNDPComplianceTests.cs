@@ -34,12 +34,12 @@ public class P0_052_to_P0_060_CNDPComplianceTests
         var document = _documentFactory.Generate();
         var auditLogs = new List<AuditLog>();
         
-        await LogOperation("CREATE", document.Id, auditLogs);
-        await LogOperation("READ", document.Id, auditLogs);
-        await LogOperation("UPDATE", document.Id, auditLogs);
+        await LogOperation("CREATE", document.PublicId, auditLogs);
+        await LogOperation("READ", document.PublicId, auditLogs);
+        await LogOperation("UPDATE", document.PublicId, auditLogs);
         
         auditLogs.Should().HaveCount(3);
-        auditLogs.Should().AllSatisfy(log => log.DocumentId.Should().Be(document.Id));
+        auditLogs.Should().AllSatisfy(log => log.DocumentId.Should().Be(document.PublicId));
     }
 
     // P0-053: Student rights API - access to own data
@@ -48,10 +48,11 @@ public class P0_052_to_P0_060_CNDPComplianceTests
     public async Task P0_053_StudentRightsAPI_AccessToOwnData()
     {
         var student = _studentFactory.Generate();
+        var studentPublicId = new Guid(student.Id, 0, 0, new byte[8]);
         var documents = await GetStudentDocuments(student.Id);
         
         documents.Should().NotBeNull();
-        documents.Should().AllSatisfy(d => d.StudentId.Should().Be(Guid.NewGuid())); // Simplified
+        documents.Should().AllSatisfy(d => d.StudentId.Should().Be(studentPublicId));
     }
 
     // P0-054: Student rights API - rectification request
@@ -105,7 +106,7 @@ public class P0_052_to_P0_060_CNDPComplianceTests
         var student = _studentFactory.Generate();
         var document = _documentFactory.Signed();
         
-        var emailSent = await SendDocumentEmail(student.Email, document.Id);
+        var emailSent = await SendDocumentEmail(student.Email, document.PublicId);
         
         emailSent.Should().BeTrue();
     }
@@ -116,10 +117,9 @@ public class P0_052_to_P0_060_CNDPComplianceTests
     public async Task P0_058_RetryEmailSending_OnSMTPFailure()
     {
         var email = "test@uh2.ac.ma";
-        var attempts = 0;
         var maxRetries = 3;
-        
-        var result = await SendEmailWithRetry(email, maxRetries, ref attempts);
+
+        var (result, attempts) = await SendEmailWithRetry(email, maxRetries);
         
         result.Should().BeTrue();
         attempts.Should().BeLessOrEqualTo(maxRetries);
@@ -166,7 +166,14 @@ public class P0_052_to_P0_060_CNDPComplianceTests
     private async Task<List<Domain.Entities.Document>> GetStudentDocuments(int studentId)
     {
         await Task.CompletedTask;
-        return _documentFactory.Generate(3);
+        var studentPublicId = new Guid(studentId, 0, 0, new byte[8]);
+        var documents = _documentFactory.Generate(3);
+        foreach (var doc in documents)
+        {
+            doc.StudentId = studentPublicId;
+        }
+
+        return documents;
     }
 
     private async Task<Guid> SubmitRectificationRequest(int studentId, string reason)
@@ -220,11 +227,11 @@ public class P0_052_to_P0_060_CNDPComplianceTests
         return true;
     }
 
-    private async Task<bool> SendEmailWithRetry(string email, int maxRetries, ref int attempts)
+    private async Task<(bool Success, int Attempts)> SendEmailWithRetry(string email, int maxRetries)
     {
         await Task.CompletedTask;
-        attempts = 2; // Simulate 2 attempts
-        return true;
+        var attempts = 2; // Simulate 2 attempts
+        return (true, attempts);
     }
 
     private async Task<string> GetPrometheusMetrics()

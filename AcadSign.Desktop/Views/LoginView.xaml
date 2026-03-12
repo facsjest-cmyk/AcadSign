@@ -7,6 +7,10 @@
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize">
     
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+    </Window.Resources>
+    
     <Grid Background="#F5F5F5">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -14,7 +18,8 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         
-        <StackPanel Grid.Row="0" Background="#2196F3" Padding="20">
+        <Border Grid.Row="0" Background="#2196F3" Padding="20">
+            <StackPanel>
             <TextBlock Text="AcadSign" 
                        FontSize="32" 
                        FontWeight="Bold" 
@@ -25,7 +30,8 @@
                        Foreground="White"
                        HorizontalAlignment="Center"
                        Margin="0,5,0,0"/>
-        </StackPanel>
+            </StackPanel>
+        </Border>
         
         <StackPanel Grid.Row="1" 
                     Margin="40"
@@ -93,8 +99,4 @@
                    HorizontalAlignment="Center"
                    Margin="0,0,0,20"/>
     </Grid>
-    
-    <Window.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
-    </Window.Resources>
 </Window>

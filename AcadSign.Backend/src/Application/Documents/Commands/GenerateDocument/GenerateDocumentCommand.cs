@@ -1,4 +1,6 @@
 using AcadSign.Backend.Application.Common.Models;
+using AcadSign.Backend.Domain.Enums;
+using MediatR;
 
 namespace AcadSign.Backend.Application.Documents.Commands.GenerateDocument;
 

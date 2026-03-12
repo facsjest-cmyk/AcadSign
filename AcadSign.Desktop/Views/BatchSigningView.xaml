@@ -1,0 +1,99 @@
+<Window x:Class="AcadSign.Desktop.Views.BatchSigningView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="AcadSign - Signature par lot"
+        Height="520" Width="820"
+        WindowStartupLocation="CenterScreen"
+        Background="#1E1E1E">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="Signature par lot" Foreground="White" FontSize="22" FontWeight="Bold"/>
+
+        <TextBlock Grid.Row="1" Text="{Binding StatusMessage}" Foreground="#CCCCCC" Margin="0,10,0,0"/>
+
+        <StackPanel Grid.Row="2" Margin="0,15,0,0">
+            <ProgressBar Height="18" Minimum="0" Maximum="100" Value="{Binding ProgressPercentage}"/>
+            <Grid Margin="0,10,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="{Binding CurrentDocumentName}" Foreground="#CCCCCC"/>
+                <TextBlock Grid.Column="1" Text="{Binding EstimatedTimeRemaining}" Foreground="#858585" Margin="15,0,0,0"/>
+            </Grid>
+
+            <Grid Margin="0,10,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Total:" Foreground="#858585"/>
+                <TextBlock Grid.Column="1" Text="{Binding TotalDocuments}" Foreground="#CCCCCC" Margin="6,0,15,0"/>
+                <TextBlock Grid.Column="2" Text="Traités:" Foreground="#858585"/>
+                <TextBlock Grid.Column="3" Text="{Binding ProcessedDocuments}" Foreground="#CCCCCC" Margin="6,0,0,0"/>
+            </Grid>
+        </StackPanel>
+
+        <Border Grid.Row="3" Margin="0,20,0,0" Background="#252526" BorderBrush="#3E3E42" BorderThickness="1" CornerRadius="4" Padding="10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Text="Documents sélectionnés" Foreground="#CCCCCC" FontWeight="SemiBold" Margin="0,0,0,10"/>
+
+                <ListBox Grid.Row="1" ItemsSource="{Binding Documents}" Background="#252526" BorderThickness="0">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                <TextBlock Text="{Binding Document.StudentName}" Foreground="#CCCCCC" Margin="0,0,10,0"/>
+                                <TextBlock Text="{Binding Document.DocumentType}" Foreground="#858585"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="4" Margin="0,20,0,0" Background="#252526" BorderBrush="#3E3E42" BorderThickness="1" CornerRadius="4" Padding="10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Text="Documents en échec" Foreground="#CCCCCC" FontWeight="SemiBold" Margin="0,0,0,10"/>
+
+                <ListBox Grid.Row="1" ItemsSource="{Binding FailedDocumentResults}" Background="#252526" BorderThickness="0">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="0,0,0,8">
+                                <TextBlock Text="{Binding DocumentName}" Foreground="#F48771"/>
+                                <TextBlock Text="{Binding ErrorMessage}" Foreground="#858585" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </Border>
+
+        <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+            <Button Content="Annuler" Width="120" Height="34" Margin="0,0,10,0" Command="{Binding CancelCommand}" IsEnabled="{Binding IsSigning}"/>
+            <Button Content="Démarrer" Width="120" Height="34" Margin="0,0,10,0" Command="{Binding StartCommand}"/>
+            <Button Content="Fermer" Width="120" Height="34" Command="{Binding CloseCommand}"/>
+        </StackPanel>
+    </Grid>
+</Window>

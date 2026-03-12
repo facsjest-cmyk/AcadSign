@@ -33,7 +33,7 @@ public class P0_017_QRCodeEmbeddingTests
         var document = _documentFactory.AttestationScolarite();
 
         // Act
-        var pdfContent = GeneratePDFWithQRCode(document.Id);
+        var pdfContent = GeneratePDFWithQRCode(document.PublicId);
         var hasQRCode = ContainsQRCode(pdfContent);
 
         // Assert
@@ -75,7 +75,7 @@ public class P0_017_QRCodeEmbeddingTests
         var document = _documentFactory.AttestationScolarite();
 
         // Act
-        var pdfContent = GeneratePDFWithQRCode(document.Id);
+        var pdfContent = GeneratePDFWithQRCode(document.PublicId);
         var qrCodePosition = GetQRCodePosition(pdfContent);
 
         // Assert
@@ -102,14 +102,14 @@ public class P0_017_QRCodeEmbeddingTests
     {
         // Arrange
         var document = _documentFactory.AttestationScolarite();
-        document.Id = Guid.NewGuid();
+        document.PublicId = Guid.NewGuid();
 
         // Act
-        var qrCodeData = GenerateQRCodeData(document.Id);
+        var qrCodeData = GenerateQRCodeData(document.PublicId);
         var metadata = ParseQRCodeURL(qrCodeData);
 
         // Assert
-        metadata.DocumentId.Should().Be(document.Id);
+        metadata.DocumentId.Should().Be(document.PublicId);
         metadata.VerificationURL.Should().StartWith("https://acadsign.uh2.ac.ma/verify/");
     }
 

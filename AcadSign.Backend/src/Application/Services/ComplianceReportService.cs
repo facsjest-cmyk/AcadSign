@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using AcadSign.Backend.Domain.Entities;
+using AcadSign.Backend.Application.Common.Interfaces;
 
 namespace AcadSign.Backend.Application.Services;
 

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15-alpine
@@ -9,7 +7,7 @@ services:
       POSTGRES_USER: acadsign_user
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -46,20 +44,22 @@ services:
     volumes:
       - seq_data:/data
 
-  backend:
-    image: mcr.microsoft.com/devcontainers/dotnet:1.0-10.0
-    container_name: acadsign-backend-dev
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: acadsign-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@acadsign.com
+      PGADMIN_DEFAULT_PASSWORD: ${POSTGRES_PASSWORD}
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "5050:80"
     volumes:
-      - ./AcadSign.Backend:/workspace:cached
-    command: sleep infinity
+      - pgadmin_data:/var/lib/pgadmin
     depends_on:
       - postgres
-      - minio
-      - seq
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
 
 volumes:
   postgres_data:
   minio_data:
   seq_data:
+  pgadmin_data:

@@ -4,7 +4,7 @@ namespace AcadSign.Backend.Domain.Entities;
 
 public class Document : BaseAuditableEntity
 {
-    public Guid Id { get; set; }
+    public Guid PublicId { get; set; }
     public string DocumentType { get; set; } = string.Empty;
     public Guid StudentId { get; set; }
     public string Status { get; set; } = "UNSIGNED";

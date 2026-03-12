@@ -1,7 +1,16 @@
+using System;
+using System.Threading.Tasks;
+
 namespace AcadSign.Desktop.Services.Signature;
 
 public class SignatureService : ISignatureService
 {
+    public async Task<byte[]> SignPdfAsync(byte[] unsignedPdf, string pin)
+    {
+        await Task.Delay(1500);
+        return unsignedPdf;
+    }
+
     public async Task<byte[]> SignDocumentAsync(Guid documentId)
     {
         await Task.Delay(2000);

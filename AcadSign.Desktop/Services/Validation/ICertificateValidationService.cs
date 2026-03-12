@@ -1,4 +1,6 @@
 using System.Security.Cryptography.X509Certificates;
+using System;
+using System.Threading.Tasks;
 
 namespace AcadSign.Desktop.Services.Validation;
 

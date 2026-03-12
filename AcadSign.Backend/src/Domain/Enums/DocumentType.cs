@@ -1,4 +1,4 @@
-namespace AcadSign.Backend.Application.Common.Models;
+namespace AcadSign.Backend.Domain.Enums;
 
 public enum DocumentType
 {

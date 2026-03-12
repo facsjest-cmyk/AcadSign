@@ -15,13 +15,32 @@ public class Authorization : EndpointGroupBase
 {
     public override void Map(RouteGroupBuilder group)
     {
-        group.MapGet(Authorize, "/authorize").AllowAnonymous();
-        group.MapPost(Authorize, "/authorize").AllowAnonymous();
+        group.MapGet(AuthorizeGet, "/authorize").AllowAnonymous().WithName("AuthorizeGet");
+        group.MapPost(AuthorizePost, "/authorize").AllowAnonymous().WithName("AuthorizePost");
         group.MapPost(Accept, "/authorize/accept").AllowAnonymous();
     }
 
     [AllowAnonymous]
-    public async Task<IResult> Authorize(
+    public async Task<IResult> AuthorizeGet(
+        HttpContext httpContext,
+        [FromServices] IOpenIddictApplicationManager applicationManager,
+        [FromServices] IOpenIddictAuthorizationManager authorizationManager,
+        [FromServices] IOpenIddictScopeManager scopeManager)
+    {
+        return await AuthorizeInternal(httpContext, applicationManager, authorizationManager, scopeManager);
+    }
+
+    [AllowAnonymous]
+    public async Task<IResult> AuthorizePost(
+        HttpContext httpContext,
+        [FromServices] IOpenIddictApplicationManager applicationManager,
+        [FromServices] IOpenIddictAuthorizationManager authorizationManager,
+        [FromServices] IOpenIddictScopeManager scopeManager)
+    {
+        return await AuthorizeInternal(httpContext, applicationManager, authorizationManager, scopeManager);
+    }
+
+    private async Task<IResult> AuthorizeInternal(
         HttpContext httpContext,
         [FromServices] IOpenIddictApplicationManager applicationManager,
         [FromServices] IOpenIddictAuthorizationManager authorizationManager,

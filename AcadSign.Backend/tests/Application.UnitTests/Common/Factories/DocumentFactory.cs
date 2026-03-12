@@ -18,18 +18,11 @@ public class DocumentFactory
         "ATTESTATION_INSCRIPTION"
     };
 
-    private static readonly string[] Statuses = new[]
-    {
-        "UNSIGNED",
-        "SIGNED",
-        "ERROR",
-        "PENDING"
-    };
-
     public DocumentFactory()
     {
         _faker = new Faker<Document>()
-            .RuleFor(d => d.Id, f => Guid.NewGuid())
+            .RuleFor(d => d.Id, f => f.Random.Int(1, 100000))
+            .RuleFor(d => d.PublicId, f => Guid.NewGuid())
             .RuleFor(d => d.DocumentType, f => f.PickRandom(DocumentTypes))
             .RuleFor(d => d.StudentId, f => Guid.NewGuid())
             .RuleFor(d => d.Status, f => "UNSIGNED")
@@ -37,9 +30,9 @@ public class DocumentFactory
             .RuleFor(d => d.SignedAt, f => null)
             .RuleFor(d => d.SignerName, f => null)
             .RuleFor(d => d.SignatureData, f => null)
-            .RuleFor(d => d.Created, f => f.Date.Recent(30))
+            .RuleFor(d => d.Created, f => f.Date.RecentOffset(30))
             .RuleFor(d => d.CreatedBy, f => f.Internet.Email())
-            .RuleFor(d => d.LastModified, f => null)
+            .RuleFor(d => d.LastModified, f => f.Date.RecentOffset(1))
             .RuleFor(d => d.LastModifiedBy, f => null);
     }
 

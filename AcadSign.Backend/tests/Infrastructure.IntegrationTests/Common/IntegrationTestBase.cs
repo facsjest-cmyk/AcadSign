@@ -18,11 +18,18 @@ public abstract class IntegrationTestBase
     [OneTimeSetUp]
     public async Task OneTimeSetUp()
     {
-        Containers = new TestContainersFixture();
-        await Containers.InitializeAsync();
+        try
+        {
+            Containers = new TestContainersFixture();
+            await Containers.InitializeAsync();
 
-        Database = new DatabaseFixture(Containers);
-        await Database.InitializeAsync();
+            Database = new DatabaseFixture(Containers);
+            await Database.InitializeAsync();
+        }
+        catch (Exception ex) when (ex.GetType().Name.Contains("DockerUnavailableException", StringComparison.OrdinalIgnoreCase))
+        {
+            Assert.Ignore($"Docker indisponible/mal configuré (Testcontainers). Tests d'intégration ignorés. {ex.Message}");
+        }
     }
 
     /// <summary>

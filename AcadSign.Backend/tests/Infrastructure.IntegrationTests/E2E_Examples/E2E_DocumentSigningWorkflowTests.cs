@@ -56,10 +56,8 @@ public class E2E_DocumentSigningWorkflowTests : IntegrationTestBase
         // ============================================
         // STEP 2: Generate Unsigned Document
         // ============================================
-        var document = _documentFactory
-            .ForStudent(Guid.NewGuid()) // In real scenario, this would be student.Id as Guid
-            .AttestationScolarite()
-            .Unsigned();
+        var document = _documentFactory.AttestationScolarite();
+        document.StudentId = student.PublicId;
 
         document.S3ObjectPath = $"documents/{student.Id}/attestation-{DateTime.UtcNow:yyyyMMdd}.pdf";
 
@@ -238,10 +236,10 @@ public class E2E_DocumentSigningWorkflowTests : IntegrationTestBase
         Database.DbContext.Set<Domain.Entities.Student>().Add(student);
         await Database.DbContext.SaveChangesAsync();
 
-        var attestationScolarite = _documentFactory.AttestationScolarite().Unsigned();
-        var releveNotes = _documentFactory.ReleveNotes().Unsigned();
-        var attestationReussite = _documentFactory.AttestationReussite().Unsigned();
-        var attestationInscription = _documentFactory.AttestationInscription().Unsigned();
+        var attestationScolarite = _documentFactory.AttestationScolarite();
+        var releveNotes = _documentFactory.ReleveNotes();
+        var attestationReussite = _documentFactory.AttestationReussite();
+        var attestationInscription = _documentFactory.AttestationInscription();
 
         var allDocuments = new[] { attestationScolarite, releveNotes, attestationReussite, attestationInscription };
 

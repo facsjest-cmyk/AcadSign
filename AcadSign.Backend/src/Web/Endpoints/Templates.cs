@@ -1,6 +1,8 @@
 using AcadSign.Backend.Application.Common.Interfaces;
 using AcadSign.Backend.Application.Common.Models;
 using AcadSign.Backend.Domain.Entities;
+using AcadSign.Backend.Domain.Enums;
+using AcadSign.Backend.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,19 +13,20 @@ public class Templates : EndpointGroupBase
     public override void Map(RouteGroupBuilder group)
     {
         group.RequireAuthorization();
-        group.MapPost(UploadTemplate, "");
+        group.MapPost(UploadTemplate, "").DisableAntiforgery();
         group.MapGet(ListTemplates, "");
         group.MapGet(GetTemplate, "{templateId}");
         group.MapDelete(DeleteTemplate, "{templateId}");
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Administrator")]
     public async Task<IResult> UploadTemplate(
         [FromForm] IFormFile templateFile,
         [FromForm] string documentType,
         [FromForm] string institutionId,
         [FromForm] string? description,
         [FromServices] ITemplateRepository templateRepo,
+        [FromServices] IAuditLogService auditService,
         [FromServices] ILogger<Templates> logger)
     {
         logger.LogInformation("Uploading template for {DocumentType} at {InstitutionId}", 
@@ -88,6 +91,14 @@ public class Templates : EndpointGroupBase
             "Template uploaded: {TemplateId}, Type: {Type}, Institution: {Institution}, Version: {Version}",
             template.Id, template.Type, template.InstitutionId, template.Version);
 
+        await auditService.LogEventAsync(AuditEventType.TEMPLATE_UPLOADED, null, new
+        {
+            templateId = template.Id,
+            documentType = template.Type.ToString(),
+            institutionId = template.InstitutionId,
+            version = template.Version
+        });
+
         return Results.Ok(new UploadTemplateResponse
         {
             TemplateId = template.Id,
@@ -97,7 +108,7 @@ public class Templates : EndpointGroupBase
         });
     }
 
-    [Authorize(Roles = "Admin,Registrar")]
+    [Authorize(Roles = "Administrator,Registrar")]
     public async Task<IResult> ListTemplates(
         [FromQuery] string? institutionId,
         [FromServices] ITemplateRepository templateRepo,
@@ -131,7 +142,7 @@ public class Templates : EndpointGroupBase
         return Results.Ok(response);
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Administrator")]
     public async Task<IResult> GetTemplate(
         Guid templateId,
         [FromServices] ITemplateRepository templateRepo,
@@ -149,7 +160,7 @@ public class Templates : EndpointGroupBase
         return Results.File(template.TemplateData, "application/pdf", template.FileName);
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Administrator")]
     public async Task<IResult> DeleteTemplate(
         Guid templateId,
         [FromServices] ITemplateRepository templateRepo,

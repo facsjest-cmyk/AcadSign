@@ -3,6 +3,8 @@ using CommunityToolkit.Mvvm.Input;
 using AcadSign.Desktop.Services.Authentication;
 using AcadSign.Desktop.Services.Navigation;
 using AcadSign.Desktop.Services.Storage;
+using System;
+using System.Threading.Tasks;
 
 namespace AcadSign.Desktop.ViewModels;
 
@@ -38,13 +40,21 @@ public partial class LoginViewModel : ObservableObject
             IsLoggingIn = true;
             StatusMessage = "Connexion en cours...";
             
-            var result = await _authService.LoginAsync();
+            // Note: Ce ViewModel n'est plus utilisé - LoginControl gère maintenant la connexion
+            var result = await _authService.LoginAsync("demo", "demo");
             
-            await _tokenStorage.SaveTokensAsync(result.AccessToken, result.RefreshToken);
-            
-            StatusMessage = "Connexion réussie!";
-            
-            _navigationService.NavigateTo<MainViewModel>();
+            if (result.IsSuccess)
+            {
+                await _tokenStorage.SaveTokensAsync(result.AccessToken, result.RefreshToken);
+                
+                StatusMessage = "Connexion réussie!";
+                
+                _navigationService.NavigateTo<MainViewModel>();
+            }
+            else
+            {
+                StatusMessage = result.ErrorMessage ?? "Échec de la connexion";
+            }
         }
         catch (Exception ex)
         {

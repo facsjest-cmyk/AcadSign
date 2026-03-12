@@ -63,7 +63,7 @@ public class P0_048_to_P0_051_ExternalAPITests
         
         for (int i = 0; i < 101; i++)
         {
-            var response = await MakeAPIRequest();
+            var response = await MakeAPIRequest(i);
             requests++;
             
             if (response.StatusCode == 429)
@@ -110,13 +110,12 @@ paths:
         return true;
     }
 
-    private async Task<APIResponse> MakeAPIRequest()
+    private async Task<APIResponse> MakeAPIRequest(int requestIndex)
     {
         await Task.CompletedTask;
-        var random = new Random();
         return new APIResponse
         {
-            StatusCode = random.Next(100) < 100 ? 200 : 429
+            StatusCode = requestIndex >= 100 ? 429 : 200
         };
     }
 

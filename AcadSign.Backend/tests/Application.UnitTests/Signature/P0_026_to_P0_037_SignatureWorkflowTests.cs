@@ -73,9 +73,9 @@ public class P0_026_to_P0_037_SignatureWorkflowTests
     [Category("P0-030")]
     public async Task P0_030_RetrySignature_OnDongleDisconnect()
     {
-        var attempts = 0;
         var maxRetries = 3;
-        var success = await RetrySignature(maxRetries, ref attempts);
+
+        var (success, attempts) = await RetrySignature(maxRetries);
         success.Should().BeTrue("Signature should succeed after retry");
         attempts.Should().BeLessOrEqualTo(maxRetries);
     }
@@ -143,8 +143,8 @@ public class P0_026_to_P0_037_SignatureWorkflowTests
     public async Task P0_036_DeadLetterQueue_ForFailedSignatures()
     {
         var document = _documentFactory.Unsigned();
-        await FailSignature(document.Id);
-        var dlqItem = await GetFromDeadLetterQueue(document.Id);
+        await FailSignature(document.PublicId);
+        var dlqItem = await GetFromDeadLetterQueue(document.PublicId);
         dlqItem.Should().NotBeNull("Failed signature should be in DLQ");
         dlqItem!.RetryCount.Should().Be(0);
     }
@@ -152,7 +152,7 @@ public class P0_026_to_P0_037_SignatureWorkflowTests
     // P0-037: Batch sign 500 docs < 15min
     [Test]
     [Category("P0-037")]
-    [Timeout(900000)] // 15 minutes
+    [CancelAfter(900000)] // 15 minutes
     public async Task P0_037_BatchSign500Docs_Under15Minutes()
     {
         var documents = _documentFactory.UnsignedBatch(500);
@@ -160,7 +160,7 @@ public class P0_026_to_P0_037_SignatureWorkflowTests
         var result = await BatchSign(documents);
         stopwatch.Stop();
         
-        result.SuccessCount.Should().Be(500);
+        result.SignedCount.Should().Be(500);
         stopwatch.Elapsed.Should().BeLessThan(TimeSpan.FromMinutes(15));
     }
 
@@ -190,11 +190,11 @@ public class P0_026_to_P0_037_SignatureWorkflowTests
         return content.Contains("[RFC3161_TIMESTAMP]");
     }
 
-    private async Task<bool> RetrySignature(int maxRetries, ref int attempts)
+    private async Task<(bool Success, int Attempts)> RetrySignature(int maxRetries)
     {
         await Task.CompletedTask;
-        attempts = 2; // Simulate 2 attempts
-        return attempts <= maxRetries;
+        var attempts = 2; // Simulate 2 attempts
+        return (attempts <= maxRetries, attempts);
     }
 
     private async Task<BatchSignResult> BatchSignWithPause(List<Domain.Entities.Document> docs, int disconnectAt)
@@ -222,7 +222,7 @@ public class P0_026_to_P0_037_SignatureWorkflowTests
     private async Task<string> NotifyDongleDisconnect()
     {
         await Task.CompletedTask;
-        return "Dongle USB déconnecté. Reconnectez le dongle et entrez le PIN pour continuer.";
+        return "Dongle USB déconnecté. Reconnectez le dongle USB et entrez le PIN pour continuer.";
     }
 
     private async Task SimulateAPIFailure()

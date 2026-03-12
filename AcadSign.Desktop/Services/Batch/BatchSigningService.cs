@@ -3,6 +3,11 @@ using AcadSign.Desktop.Models;
 using AcadSign.Desktop.Services.Signature;
 using AcadSign.Desktop.Services.Api;
 using System.Diagnostics;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace AcadSign.Desktop.Services.Batch;
 
@@ -39,7 +44,9 @@ public class BatchSigningService : IBatchSigningService
         
         _logger.LogInformation("Starting batch signing for {Count} documents", documents.Count);
         
-        for (int i = 0; i < documents.Count; i++)
+        var downloaded = await DownloadDocumentsInParallelAsync(documents, maxConcurrency: 5, token);
+
+        for (int i = 0; i < downloaded.Count; i++)
         {
             if (token.IsCancellationRequested)
             {
@@ -47,22 +54,21 @@ public class BatchSigningService : IBatchSigningService
                 break;
             }
             
-            var document = documents[i];
+            var (document, unsignedPdf) = downloaded[i];
             
             progress?.Report(new BatchProgress
             {
                 CurrentDocument = i + 1,
                 TotalDocuments = documents.Count,
-                CurrentDocumentName = document.DocumentType,
-                Status = $"Signature de {document.DocumentType}..."
+                CurrentDocumentName = $"{document.StudentName} - {document.DocumentType}",
+                Status = $"Signature de {document.StudentName} - {document.DocumentType}..."
             });
             
             try
             {
-                var unsignedPdf = await _apiClient.DownloadDocumentAsync(document.Id);
-                
                 var signedPdf = await _signatureService.SignPdfAsync(unsignedPdf, pin);
                 
+                // Upload signed PDF
                 await _apiClient.UploadSignedDocumentAsync(document.Id, signedPdf);
                 
                 result.Results.Add(new DocumentSignResult
@@ -104,6 +110,29 @@ public class BatchSigningService : IBatchSigningService
             result.Duration);
         
         return result;
+    }
+
+    private async Task<List<(DocumentDto Document, byte[] UnsignedPdf)>> DownloadDocumentsInParallelAsync(
+        List<DocumentDto> documents,
+        int maxConcurrency,
+        CancellationToken token)
+    {
+        var semaphore = new SemaphoreSlim(maxConcurrency);
+        var tasks = documents.Select(async doc =>
+        {
+            await semaphore.WaitAsync(token);
+            try
+            {
+                var bytes = await _apiClient.DownloadDocumentAsync(doc.Id);
+                return (Document: doc, UnsignedPdf: bytes);
+            }
+            finally
+            {
+                semaphore.Release();
+            }
+        }).ToList();
+
+        return (await Task.WhenAll(tasks)).ToList();
     }
     
     public Task CancelBatchAsync()

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using AcadSign.Backend.Application.Interfaces;
-using AcadSign.Backend.Web.Controllers;
+using AcadSign.Backend.Application.Models;
+using AcadSign.Backend.Domain.Enums;
 using Microsoft.Extensions.Configuration;
 
 namespace AcadSign.Backend.Application.Services;
@@ -73,11 +74,11 @@ public class DashboardMetricsService : IDashboardMetricsService
         };
     }
     
-    private async Task<ServiceHealth> CheckBackendHealthAsync()
+    private async Task<ServiceHealthInfo> CheckBackendHealthAsync()
     {
         var uptime = await GetPrometheusMetricAsync("up{job=\"acadsign-backend\"}");
         
-        return new ServiceHealth
+        return new ServiceHealthInfo
         {
             Status = uptime == 1 ? "Operational" : "Down",
             UptimePercent = 99.8,
@@ -85,9 +86,9 @@ public class DashboardMetricsService : IDashboardMetricsService
         };
     }
     
-    private async Task<ServiceHealth> CheckPostgreSQLHealthAsync()
+    private async Task<ServiceHealthInfo> CheckPostgreSQLHealthAsync()
     {
-        return new ServiceHealth
+        return new ServiceHealthInfo
         {
             Status = "Operational",
             UptimePercent = 99.9,
@@ -95,9 +96,9 @@ public class DashboardMetricsService : IDashboardMetricsService
         };
     }
     
-    private async Task<ServiceHealth> CheckMinIOHealthAsync()
+    private async Task<ServiceHealthInfo> CheckMinIOHealthAsync()
     {
-        return new ServiceHealth
+        return new ServiceHealthInfo
         {
             Status = "Operational",
             UptimePercent = 99.7,
@@ -105,9 +106,9 @@ public class DashboardMetricsService : IDashboardMetricsService
         };
     }
     
-    private async Task<ServiceHealth> CheckSeqHealthAsync()
+    private async Task<ServiceHealthInfo> CheckSeqHealthAsync()
     {
-        return new ServiceHealth
+        return new ServiceHealthInfo
         {
             Status = "Operational",
             UptimePercent = 99.5,
@@ -115,14 +116,14 @@ public class DashboardMetricsService : IDashboardMetricsService
         };
     }
     
-    private async Task<CertificateStatus> GetCertificateStatusAsync()
+    private async Task<CertificateStatusInfo> GetCertificateStatusAsync()
     {
         var daysRemaining = (int)await GetPrometheusMetricAsync("acadsign_certificate_days_remaining");
         
         if (daysRemaining == 0)
             daysRemaining = 180;
         
-        var validUntil = DateTime.UtcNow.AddDays(daysRemaining);
+        var expiryDate = DateTime.UtcNow.AddDays(daysRemaining);
         
         string status;
         if (daysRemaining > 90)
@@ -132,28 +133,27 @@ public class DashboardMetricsService : IDashboardMetricsService
         else
             status = "Critical";
         
-        return new CertificateStatus
+        return new CertificateStatusInfo
         {
             Issuer = "Barid Al-Maghrib PKI",
-            ValidUntil = validUntil,
+            ExpiryDate = expiryDate,
             DaysRemaining = daysRemaining,
             Status = status
         };
     }
     
-    private async Task<HangfireStatus> GetHangfireStatusAsync()
+    private async Task<HangfireStatusInfo> GetHangfireStatusAsync()
     {
         var processing = (int)await GetPrometheusMetricAsync("hangfire_jobs_processing");
         var succeeded = (int)await GetPrometheusMetricAsync("hangfire_jobs_succeeded_24h");
         var failed = (int)await GetPrometheusMetricAsync("hangfire_jobs_failed_24h");
-        var dlq = (int)await GetPrometheusMetricAsync("hangfire_dead_letter_queue_size");
         
-        return new HangfireStatus
+        return new HangfireStatusInfo
         {
-            JobsProcessing = processing,
-            JobsSucceeded24h = succeeded,
-            JobsFailed24h = failed,
-            DeadLetterQueueSize = dlq
+            Status = processing > 0 ? "Processing" : "Idle",
+            JobsProcessed = succeeded,
+            JobsQueued = processing,
+            JobsFailed = failed
         };
     }
     

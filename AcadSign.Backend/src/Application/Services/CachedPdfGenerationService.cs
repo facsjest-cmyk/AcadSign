@@ -1,5 +1,8 @@
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using AcadSign.Backend.Application.Common.Interfaces;
+using AcadSign.Backend.Application.Common.Models;
+using AcadSign.Backend.Domain.Enums;
 
 namespace AcadSign.Backend.Application.Services;
 
@@ -16,7 +19,7 @@ public class CachedPdfGenerationService : IPdfGenerationService
         _logger = logger;
     }
     
-    public async Task<byte[]> GenerateDocumentAsync(DocumentType type, object studentData)
+    public async Task<byte[]> GenerateDocumentAsync(DocumentType type, StudentData studentData)
     {
         var template = await _cache.GetOrCreateAsync($"template_{type}", async entry =>
         {
@@ -24,6 +27,11 @@ public class CachedPdfGenerationService : IPdfGenerationService
             _logger.LogInformation("Loading template {Type} into cache", type);
             return await LoadTemplateAsync(type);
         });
+        
+        if (template == null)
+        {
+            throw new InvalidOperationException($"Template for {type} could not be loaded");
+        }
         
         return await GenerateFromTemplateAsync(template, studentData);
     }
@@ -34,17 +42,9 @@ public class CachedPdfGenerationService : IPdfGenerationService
         return new object();
     }
     
-    private async Task<byte[]> GenerateFromTemplateAsync(object template, object studentData)
+    private async Task<byte[]> GenerateFromTemplateAsync(object template, StudentData studentData)
     {
         await Task.Delay(100);
         return new byte[] { 1, 2, 3 };
     }
-}
-
-public enum DocumentType
-{
-    AttestationScolarite,
-    Releve,
-    Diplome,
-    Convention
 }

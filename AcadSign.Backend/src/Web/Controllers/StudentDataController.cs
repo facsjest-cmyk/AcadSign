@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using AcadSign.Backend.Application.Services;
+using AcadSign.Backend.Application.Common.Interfaces;
 using AcadSign.Backend.Domain.Entities;
 using System.Security.Claims;
 
@@ -47,11 +48,12 @@ public class StudentDataController : ControllerBase
             return NotFound();
         }
         
-        var documents = await _documentRepo.GetByStudentIdAsync(studentId);
+        var studentGuid = Guid.TryParse(studentId, out var guid) ? guid : Guid.Empty;
+        var documents = await _documentRepo.GetByStudentIdAsync(studentGuid);
         
         var response = new StudentDataResponse
         {
-            StudentId = student.StudentId,
+            StudentId = student.Id.ToString(),
             FirstName = student.FirstName,
             LastName = student.LastName,
             CIN = student.CIN,
@@ -61,13 +63,13 @@ public class StudentDataController : ControllerBase
             DateOfBirth = student.DateOfBirth,
             Documents = documents.Select(d => new StudentDocumentDto
             {
-                DocumentId = d.Id,
-                DocumentType = d.Type?.ToString() ?? "Unknown",
-                CreatedAt = d.CreatedAt,
-                Status = d.Status?.ToString() ?? "Unknown"
+                DocumentId = Guid.NewGuid(), // TODO: Utiliser un vrai mapping
+                DocumentType = d.DocumentType ?? "Unknown",
+                CreatedAt = d.Created.DateTime,
+                Status = d.Status ?? "Unknown"
             }).ToList(),
-            DataCollectedAt = student.CreatedAt,
-            DataRetentionUntil = student.CreatedAt.AddYears(30)
+            DataCollectedAt = DateTime.UtcNow,
+            DataRetentionUntil = DateTime.UtcNow.AddYears(30)
         };
         
         await _auditService.LogEventAsync(AuditEventType.USER_LOGIN, null, new
@@ -167,7 +169,7 @@ public class StudentDataController : ControllerBase
     private bool IsAuthorizedToAccessStudentData(string studentId)
     {
         var userStudentId = User.FindFirst("student_id")?.Value;
-        var isAdmin = User.IsInRole("Admin");
+        var isAdmin = User.IsInRole("Administrator");
         
         return userStudentId == studentId || isAdmin;
     }

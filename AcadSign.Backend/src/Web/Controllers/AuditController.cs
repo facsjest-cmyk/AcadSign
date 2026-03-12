@@ -8,7 +8,7 @@ namespace AcadSign.Backend.Web.Controllers;
 
 [ApiController]
 [Route("api/v1/audit")]
-[Authorize(Roles = "Auditor,Admin")]
+[Authorize(Roles = "Auditor,Administrator")]
 public class AuditController : ControllerBase
 {
     private readonly IAuditLogRepository _auditRepo;

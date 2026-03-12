@@ -4,6 +4,8 @@ namespace AcadSign.Backend.Domain.Entities;
 
 public class Student : BaseEntity
 {
+    public Guid PublicId { get; set; }
+
     // Données chiffrées (PII - Personally Identifiable Information)
     [EncryptedProperty]
     public string CIN { get; set; } = string.Empty; // Carte d'Identité Nationale

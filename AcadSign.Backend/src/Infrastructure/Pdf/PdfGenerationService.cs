@@ -1,5 +1,6 @@
 using AcadSign.Backend.Application.Common.Interfaces;
 using AcadSign.Backend.Application.Common.Models;
+using AcadSign.Backend.Domain.Enums;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using QuestPDF.Fluent;
@@ -12,6 +13,7 @@ public class PdfGenerationService : IPdfGenerationService
 {
     private readonly ILogger<PdfGenerationService> _logger;
     private readonly IQrCodeService _qrCodeService;
+    private readonly IAttestationTemplateRenderer _attestationTemplateRenderer;
     private readonly string _verificationBaseUrl;
 
     static PdfGenerationService()
@@ -23,16 +25,30 @@ public class PdfGenerationService : IPdfGenerationService
     public PdfGenerationService(
         ILogger<PdfGenerationService> logger,
         IQrCodeService qrCodeService,
+        IAttestationTemplateRenderer attestationTemplateRenderer,
         IConfiguration configuration)
     {
         _logger = logger;
         _qrCodeService = qrCodeService;
+        _attestationTemplateRenderer = attestationTemplateRenderer;
         _verificationBaseUrl = configuration["VerificationPortal:BaseUrl"] 
             ?? "https://verify.acadsign.ma";
     }
 
     public async Task<byte[]> GenerateDocumentAsync(DocumentType type, StudentData data)
     {
+        if (SupportsTemplateRendering(type))
+        {
+            var templatePdf = await _attestationTemplateRenderer.TryRenderAsync(type, data);
+            if (templatePdf is { Length: > 0 })
+            {
+                _logger.LogInformation("Template-based attestation rendering applied for {DocumentType}", type);
+                return templatePdf;
+            }
+
+            _logger.LogWarning("Template rendering unavailable for {DocumentType}; fallback to standard QuestPDF", type);
+        }
+
         return await Task.Run(() =>
         {
             _logger.LogInformation("Generating PDF document of type {DocumentType} for student {StudentId}", 
@@ -59,6 +75,11 @@ public class PdfGenerationService : IPdfGenerationService
             return pdfBytes;
         });
     }
+
+    private static bool SupportsTemplateRendering(DocumentType type)
+        => type is DocumentType.AttestationScolarite
+            or DocumentType.AttestationReussite
+            or DocumentType.AttestationInscription;
 
     private void ComposeHeader(IContainer container, DocumentType type, StudentData data)
     {

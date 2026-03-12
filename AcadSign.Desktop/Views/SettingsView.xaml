@@ -12,13 +12,15 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         
-        <StackPanel Grid.Row="0" Background="#2196F3" Padding="20">
+        <Border Grid.Row="0" Background="#2196F3" Padding="20">
+            <StackPanel>
             <TextBlock Text="Paramètres" 
                        FontSize="24" 
                        FontWeight="Bold" 
                        Foreground="White"
                        HorizontalAlignment="Center"/>
-        </StackPanel>
+            </StackPanel>
+        </Border>
         
         <ScrollViewer Grid.Row="1" 
                       VerticalScrollBarVisibility="Auto"

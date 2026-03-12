@@ -47,7 +47,7 @@ public class DatabaseFixture
         {
             DbAdapter = DbAdapter.Postgres,
             SchemasToInclude = new[] { "public" },
-            TablesToIgnore = new[] { "__EFMigrationsHistory" }
+            TablesToIgnore = new[] { new Respawn.Graph.Table("__EFMigrationsHistory") }
         });
     }
 

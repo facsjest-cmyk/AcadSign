@@ -1,0 +1,51 @@
+{
+  "templates": [
+    {
+      "key": "attestation-scolarite-info",
+      "documentType": "AttestationScolarite",
+      "priority": 10,
+      "programContains": "INFO",
+      "backgroundImage": "Releve des notes copie.jpeg",
+      "fields": [
+        { "field": "FullNameFr", "x": 185, "y": 250, "fontSize": 16, "bold": true },
+        { "field": "CNE", "x": 185, "y": 282, "fontSize": 12, "prefix": "Apogee: " },
+        { "field": "ProgramNameFr", "x": 185, "y": 312, "fontSize": 12, "bold": true },
+        { "field": "AcademicYear", "x": 185, "y": 342, "fontSize": 11, "prefix": "Annee: " }
+      ]
+    },
+    {
+      "key": "attestation-scolarite-default",
+      "documentType": "AttestationScolarite",
+      "priority": 100,
+      "backgroundImage": "Engagement pour retrair des diplomes copie.jpeg",
+      "fields": [
+        { "field": "FullNameFr", "x": 175, "y": 248, "fontSize": 15, "bold": true },
+        { "field": "CNE", "x": 175, "y": 280, "fontSize": 12, "prefix": "Apogee: " },
+        { "field": "ProgramNameFr", "x": 175, "y": 310, "fontSize": 12 },
+        { "field": "DocumentId", "x": 175, "y": 340, "fontSize": 9, "prefix": "DocID: " }
+      ]
+    },
+    {
+      "key": "attestation-reussite-default",
+      "documentType": "AttestationReussite",
+      "priority": 100,
+      "backgroundImage": "Engagement pour retrair des diplomes copie.jpeg",
+      "fields": [
+        { "field": "FullNameFr", "x": 175, "y": 250, "fontSize": 16, "bold": true },
+        { "field": "DegreeNameFr", "x": 175, "y": 282, "fontSize": 13, "bold": true },
+        { "field": "GraduationYear", "x": 175, "y": 314, "fontSize": 12, "prefix": "Annee: " }
+      ]
+    },
+    {
+      "key": "attestation-inscription-default",
+      "documentType": "AttestationInscription",
+      "priority": 100,
+      "backgroundImage": "Engagement pour retrair des diplomes-2 copie.jpeg",
+      "fields": [
+        { "field": "FullNameFr", "x": 175, "y": 252, "fontSize": 16, "bold": true },
+        { "field": "ProgramNameFr", "x": 175, "y": 286, "fontSize": 12 },
+        { "field": "AcademicYear", "x": 175, "y": 318, "fontSize": 11, "prefix": "Annee: " }
+      ]
+    }
+  ]
+}

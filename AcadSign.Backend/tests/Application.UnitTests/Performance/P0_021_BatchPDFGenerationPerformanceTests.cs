@@ -28,7 +28,7 @@ public class P0_021_BatchPDFGenerationPerformanceTests
     }
 
     [Test]
-    [Timeout(900000)] // 15 minutes = 900,000 ms
+    [CancelAfter(900000)] // 15 minutes = 900,000 ms
     public async Task BatchGenerate500PDFs_ShouldComplete_Within15Minutes()
     {
         // Arrange

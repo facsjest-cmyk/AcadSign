@@ -1,3 +1,5 @@
+using AcadSign.Backend.Domain.Enums;
+
 namespace AcadSign.Backend.Domain.Entities;
 
 public class BatchDocument
@@ -6,7 +8,6 @@ public class BatchDocument
     public Guid BatchId { get; set; }
     public Batch Batch { get; set; } = null!;
     public Guid? DocumentId { get; set; }
-    public Document? Document { get; set; }
     public string StudentId { get; set; } = string.Empty;
     public DocumentStatus Status { get; set; }
     public string? ErrorMessage { get; set; }

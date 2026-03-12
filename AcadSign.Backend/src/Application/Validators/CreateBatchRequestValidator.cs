@@ -1,5 +1,5 @@
 using FluentValidation;
-using AcadSign.Backend.Web.Controllers;
+using AcadSign.Backend.Application.Models;
 
 namespace AcadSign.Backend.Application.Validators;
 

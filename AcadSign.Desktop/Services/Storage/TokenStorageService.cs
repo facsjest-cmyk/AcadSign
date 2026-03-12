@@ -1,14 +1,18 @@
 using System;
+using System.IO;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading.Tasks;
 using AcadSign.Desktop.Models;
-using CredentialManagement;
 
 namespace AcadSign.Desktop.Services.Storage;
 
 public class TokenStorageService : ITokenStorageService
 {
-    private const string CredentialTarget = "AcadSign.Desktop.Tokens";
+    private static readonly string TokenFilePath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "AcadSign",
+        "tokens.dat");
 
     public Task SaveTokensAsync(string accessToken, string refreshToken)
     {
@@ -22,20 +26,16 @@ public class TokenStorageService : ITokenStorageService
             };
 
             var json = JsonSerializer.Serialize(tokenData);
+            var plainBytes = System.Text.Encoding.UTF8.GetBytes(json);
+            var protectedBytes = ProtectedData.Protect(plainBytes, null, DataProtectionScope.CurrentUser);
 
-            using var credential = new Credential
+            var dir = Path.GetDirectoryName(TokenFilePath);
+            if (!string.IsNullOrEmpty(dir))
             {
-                Target = CredentialTarget,
-                Username = "AcadSignUser",
-                Password = json,
-                Type = CredentialType.Generic,
-                PersistanceType = PersistanceType.LocalComputer
-            };
-
-            if (!credential.Save())
-            {
-                throw new InvalidOperationException("Failed to save tokens to Windows Credential Manager");
+                Directory.CreateDirectory(dir);
             }
+
+            File.WriteAllBytes(TokenFilePath, protectedBytes);
         });
     }
 
@@ -43,19 +43,17 @@ public class TokenStorageService : ITokenStorageService
     {
         return Task.Run<(string?, string?)>(() =>
         {
-            using var credential = new Credential
-            {
-                Target = CredentialTarget
-            };
-
-            if (!credential.Load())
+            if (!File.Exists(TokenFilePath))
             {
                 return (null, null);
             }
 
             try
             {
-                var tokenData = JsonSerializer.Deserialize<TokenData>(credential.Password);
+                var protectedBytes = File.ReadAllBytes(TokenFilePath);
+                var plainBytes = ProtectedData.Unprotect(protectedBytes, null, DataProtectionScope.CurrentUser);
+                var json = System.Text.Encoding.UTF8.GetString(plainBytes);
+                var tokenData = JsonSerializer.Deserialize<TokenData>(json);
                 if (tokenData == null)
                 {
                     return (null, null);
@@ -63,7 +61,7 @@ public class TokenStorageService : ITokenStorageService
 
                 return (tokenData.AccessToken, tokenData.RefreshToken);
             }
-            catch (JsonException)
+            catch (Exception)
             {
                 return (null, null);
             }
@@ -74,12 +72,16 @@ public class TokenStorageService : ITokenStorageService
     {
         return Task.Run(() =>
         {
-            using var credential = new Credential
+            try
             {
-                Target = CredentialTarget
-            };
-
-            credential.Delete();
+                if (File.Exists(TokenFilePath))
+                {
+                    File.Delete(TokenFilePath);
+                }
+            }
+            catch
+            {
+            }
         });
     }
 

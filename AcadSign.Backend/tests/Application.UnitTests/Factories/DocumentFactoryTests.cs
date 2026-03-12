@@ -26,7 +26,7 @@ public class DocumentFactoryTests
 
         // Assert
         document.Should().NotBeNull();
-        document.Id.Should().NotBeEmpty();
+        document.Id.Should().BeGreaterThan(0);
         document.DocumentType.Should().NotBeNullOrEmpty();
         document.StudentId.Should().NotBeEmpty();
         document.Status.Should().Be("UNSIGNED");

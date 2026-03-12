@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using MimeKit;
 using MailKit.Net.Smtp;
@@ -11,15 +12,18 @@ namespace AcadSign.Backend.Infrastructure.Services;
 public class EmailService : IEmailService
 {
     private readonly IConfiguration _configuration;
+    private readonly IHostEnvironment _env;
     private readonly IAuditLogService _auditService;
     private readonly ILogger<EmailService> _logger;
     
     public EmailService(
         IConfiguration configuration,
+        IHostEnvironment env,
         IAuditLogService auditService,
         ILogger<EmailService> logger)
     {
         _configuration = configuration;
+        _env = env;
         _auditService = auditService;
         _logger = logger;
     }
@@ -33,10 +37,29 @@ public class EmailService : IEmailService
     {
         try
         {
+            var smtpHost = _configuration["Email:SmtpHost"];
+            var fromAddress = _configuration["Email:FromAddress"] ?? "noreply@university.ma";
+
+            if (_env.IsDevelopment() && string.IsNullOrWhiteSpace(smtpHost))
+            {
+                await _auditService.LogEventAsync(AuditEventType.EMAIL_SENT, document.DocumentId, new
+                {
+                    toEmail = toEmail,
+                    documentType = document.DocumentType,
+                    language = language,
+                    simulated = true
+                });
+
+                _logger.LogWarning("SMTP host is not configured. Simulating email send to {Email} for document {DocumentId}.",
+                    toEmail, document.DocumentId);
+
+                return;
+            }
+
             var message = new MimeMessage();
             message.From.Add(new MailboxAddress(
                 "Service de Scolarité - Université Hassan II",
-                _configuration["Email:FromAddress"]));
+                fromAddress));
             message.To.Add(new MailboxAddress(studentName, toEmail));
             
             var (subject, body) = language == "ar" 
@@ -54,7 +77,7 @@ public class EmailService : IEmailService
             
             using var client = new SmtpClient();
             await client.ConnectAsync(
-                _configuration["Email:SmtpHost"],
+                smtpHost,
                 int.Parse(_configuration["Email:SmtpPort"] ?? "587"),
                 SecureSocketOptions.StartTls);
             

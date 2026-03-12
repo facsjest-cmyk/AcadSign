@@ -13,6 +13,6 @@ public class HangfireAuthorizationFilter : IDashboardAuthorizationFilter
             return false;
         }
         
-        return httpContext.User.IsInRole("Admin");
+        return httpContext.User.IsInRole("Administrator");
     }
 }

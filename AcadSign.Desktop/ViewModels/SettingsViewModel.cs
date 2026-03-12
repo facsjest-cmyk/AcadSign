@@ -41,19 +41,18 @@ public partial class SettingsViewModel : ObservableObject
     
     private void LoadSettings()
     {
-        ApiEndpoint = Properties.Settings.Default.ApiEndpoint ?? "http://localhost:5000";
-        AutoDetectDongle = Properties.Settings.Default.AutoDetectDongle;
-        SelectedLanguage = Properties.Settings.Default.Language ?? "Français";
+        // TODO: Implémenter la persistance des paramètres
+        // Pour l'instant, utiliser les valeurs par défaut
+        ApiEndpoint = "http://localhost:5000";
+        AutoDetectDongle = true;
+        SelectedLanguage = "Français";
     }
     
     [RelayCommand]
     private void Save()
     {
-        Properties.Settings.Default.ApiEndpoint = ApiEndpoint;
-        Properties.Settings.Default.AutoDetectDongle = AutoDetectDongle;
-        Properties.Settings.Default.Language = SelectedLanguage;
-        Properties.Settings.Default.Save();
-        
+        // TODO: Implémenter la sauvegarde des paramètres
+        // Pour l'instant, juste naviguer vers MainViewModel
         _navigationService.NavigateTo<MainViewModel>();
     }
     

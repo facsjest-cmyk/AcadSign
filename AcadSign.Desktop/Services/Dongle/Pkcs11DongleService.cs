@@ -2,6 +2,9 @@ using Microsoft.Extensions.Logging;
 using Net.Pkcs11Interop.Common;
 using Net.Pkcs11Interop.HighLevelAPI;
 using System.Security.Cryptography.X509Certificates;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace AcadSign.Desktop.Services.Dongle;
 
@@ -159,7 +162,7 @@ public class Pkcs11DongleService : IDongleService
                 var certAttrs = session.GetAttributeValue(certObjects[0], new List<CKA> { CKA.CKA_VALUE });
                 var certBytes = certAttrs[0].GetValueAsByteArray();
                 
-                info.Certificate = new X509Certificate2(certBytes);
+                info.Certificate = X509CertificateLoader.LoadCertificate(certBytes);
                 info.CertificateExpiryDate = info.Certificate.NotAfter;
                 info.IsCertificateExpired = DateTime.Now > info.Certificate.NotAfter;
             }
@@ -242,7 +245,7 @@ public class Pkcs11DongleService : IDongleService
         
         session.Logout();
         
-        return new X509Certificate2(certBytes);
+        return X509CertificateLoader.LoadCertificate(certBytes);
     }
     
     private X509Certificate2 GetCertificateViaCSP()

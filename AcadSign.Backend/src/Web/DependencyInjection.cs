@@ -2,8 +2,11 @@ using Azure.Identity;
 using AcadSign.Backend.Application.Common.Interfaces;
 using AcadSign.Backend.Domain.Constants;
 using AcadSign.Backend.Infrastructure.Data;
+using AcadSign.Backend.Web.Infrastructure;
 using AcadSign.Backend.Web.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
 
 namespace Microsoft.Extensions.DependencyInjection;
 
@@ -13,11 +16,12 @@ public static class DependencyInjection
     {
         builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
+        builder.Services.AddControllers();
+
         builder.Services.AddScoped<IUser, CurrentUser>();
 
         builder.Services.AddHttpContextAccessor();
-        builder.Services.AddHealthChecks()
-            .AddDbContextCheck<ApplicationDbContext>();
+        builder.Services.AddHealthChecks();
 
         builder.Services.AddExceptionHandler<CustomExceptionHandler>();
 
@@ -81,7 +85,24 @@ public static class DependencyInjection
         builder.Services.AddOpenApi(options =>
         {
             options.AddOperationTransformer<ApiExceptionOperationTransformer>();
+            options.AddOperationTransformer<AuthorizeOperationSecurityTransformer>();
+            options.AddOperationTransformer<OpenApiExamplesOperationTransformer>();
             options.AddDocumentTransformer<BearerSecuritySchemeTransformer>();
+        });
+
+        builder.Services.AddRateLimiter(options =>
+        {
+            options.AddPolicy("verification", httpContext =>
+                RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: "global",
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 1000,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0,
+                        AutoReplenishment = true
+                    }));
         });
     }
 

@@ -22,6 +22,16 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
 
     public DbSet<DocumentTemplate> DocumentTemplates => Set<DocumentTemplate>();
 
+    public DbSet<Batch> Batches => Set<Batch>();
+
+    public DbSet<BatchDocument> BatchDocuments => Set<BatchDocument>();
+
+    public DbSet<DeadLetterQueueEntry> DeadLetterQueueEntries => Set<DeadLetterQueueEntry>();
+
+    public DbSet<AppUser> AppUsers => Set<AppUser>();
+
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+
     public DbSet<DataProtectionKey> DataProtectionKeys => Set<DataProtectionKey>();
 
     protected override void OnModelCreating(ModelBuilder builder)

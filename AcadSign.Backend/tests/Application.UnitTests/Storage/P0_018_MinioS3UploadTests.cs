@@ -32,7 +32,7 @@ public class P0_018_MinioS3UploadTests
         var bucketName = "acadsign-documents";
 
         // Act
-        var s3Path = await UploadToS3(pdfContent, bucketName, document.Id);
+        var s3Path = await UploadToS3(pdfContent, bucketName, document.PublicId);
 
         // Assert
         s3Path.Should().NotBeNullOrEmpty("PDF should be uploaded to S3");
