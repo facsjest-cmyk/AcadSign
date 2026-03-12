@@ -79,16 +79,16 @@
                         <Button Style="{StaticResource ToolbarButtonStyle}" Content="◉ Avant&#x0a;signature" Margin="0,0,6,0" Command="{Binding OpenBeforeSignatureCommand}"/>
                         <Button Style="{StaticResource ToolbarButtonStyle}" Content="✎ Après&#x0a;signature" Margin="0,0,10,0" Command="{Binding OpenAfterSignatureCommand}"/>
                         <Button Style="{StaticResource ToolbarButtonGreenStyle}" Content="✍ Signer&#x0a;document" Margin="0,0,8,0" Command="{Binding SignDocumentCommand}" CommandParameter="{Binding SelectedDocument}"/>
-                        <Button Style="{StaticResource ToolbarButtonGreenStyle}" Content="⚡ Signature&#x0a;par lot ( 0 )" Margin="0,0,8,0" Command="{Binding StartBatchSigningCommand}"/>
+                        <Button Style="{StaticResource ToolbarButtonGreenStyle}" Content="{Binding BatchSigningButtonText}" Margin="0,0,8,0" Command="{Binding StartBatchSigningCommand}"/>
                         <Button Style="{StaticResource ToolbarButtonStyle}" Content="✉ Envoyer&#x0a;par email" Margin="0,0,6,0" Command="{Binding SendByEmailCommand}"/>
                         <Button Style="{StaticResource ToolbarButtonStyle}" Content="📁 Exporter&#x0a;attestations" Margin="0,0,6,0" Command="{Binding ExportGeneratedAttestationsCommand}"/>
                         <Button Style="{StaticResource ToolbarButtonDangerStyle}" Content="🗑 Purger&#x0a;signés" Margin="0,0,10,0" Command="{Binding PurgeSignedCommand}"/>
                     </StackPanel>
 
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Foreground="{StaticResource GreenBrush}" FontSize="12" MinWidth="82" TextAlignment="Center" Margin="0,0,16,0" Text="e-Sign&#x0a;API:&#x0a;Connecté"/>
-                        <TextBlock Foreground="{StaticResource GreenBrush}" FontSize="12" MinWidth="82" TextAlignment="Center" Margin="0,0,16,0" Text="S3:&#x0a;En&#x0a;ligne"/>
-                        <TextBlock Foreground="{StaticResource AmberBrush}" FontSize="12" MinWidth="82" TextAlignment="Center" Margin="0,0,16,0" Text="SIS&#x0a;API:&#x0a;Prêt"/>
+                        <TextBlock Foreground="{StaticResource GreenBrush}" FontSize="12" MinWidth="130" TextAlignment="Center" VerticalAlignment="Center" Margin="0,0,16,0" Text="{Binding ApiStatusText, StringFormat=e-Sign API : {0}}"/>
+                        <TextBlock Foreground="{StaticResource GreenBrush}" FontSize="12" MinWidth="95" TextAlignment="Center" VerticalAlignment="Center" Margin="0,0,16,0" Text="{Binding S3StatusText, StringFormat=S3 : {0}}"/>
+                        <TextBlock Foreground="{StaticResource AmberBrush}" FontSize="12" MinWidth="115" TextAlignment="Center" VerticalAlignment="Center" Margin="0,0,16,0" Text="{Binding SisStatusText, StringFormat=SIS API : {0}}"/>
                         <Button Style="{StaticResource ToolbarButtonDangerStyle}" Content="🚪 Déconnexion" Command="{Binding LogoutCommand}"/>
                     </StackPanel>
                 </Grid>
@@ -218,20 +218,20 @@
 
                                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                                     <TextBlock Text="Page" Foreground="{StaticResource SubBrush}" FontSize="12" Margin="0,0,8,0"/>
-                                    <TextBlock Text="1 / 1" Foreground="{StaticResource MutedBrush}" FontFamily="Consolas" FontSize="12" Margin="0,0,10,0"/>
-                                    <Button Content="◀" Style="{StaticResource PdfToolButtonStyle}" Margin="0,0,6,0"/>
-                                    <Button Content="▶" Style="{StaticResource PdfToolButtonStyle}"/>
+                                    <TextBlock Text="{Binding PreviewPageDisplay}" Foreground="{StaticResource MutedBrush}" FontFamily="Consolas" FontSize="12" Margin="0,0,10,0"/>
+                                    <Button Content="◀" Style="{StaticResource PdfToolButtonStyle}" Margin="0,0,6,0" Command="{Binding PreviousPreviewPageCommand}"/>
+                                    <Button Content="▶" Style="{StaticResource PdfToolButtonStyle}" Command="{Binding NextPreviewPageCommand}"/>
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                    <Button Content="－" Style="{StaticResource PdfToolButtonStyle}" Margin="0,0,6,0"/>
+                                    <Button Content="－" Style="{StaticResource PdfToolButtonStyle}" Margin="0,0,6,0" Command="{Binding ZoomOutPreviewCommand}"/>
                                     <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,6" Margin="0,0,6,0">
-                                        <TextBlock Text="100%" Foreground="{StaticResource TextBrush}" FontFamily="Consolas" FontSize="12"/>
+                                        <TextBlock Text="{Binding PreviewZoomDisplay}" Foreground="{StaticResource TextBrush}" FontFamily="Consolas" FontSize="12"/>
                                     </Border>
-                                    <Button Content="＋" Style="{StaticResource PdfToolButtonStyle}" Margin="0,0,12,0"/>
-                                    <Button Content="↻" Style="{StaticResource PdfToolButtonStyle}" Margin="0,0,6,0"/>
-                                    <Button Content="⬇" Style="{StaticResource PdfToolButtonStyle}" Margin="0,0,6,0"/>
-                                    <Button Content="🖨" Style="{StaticResource PdfToolButtonStyle}"/>
+                                    <Button Content="＋" Style="{StaticResource PdfToolButtonStyle}" Margin="0,0,12,0" Command="{Binding ZoomInPreviewCommand}"/>
+                                    <Button Content="↻" Style="{StaticResource PdfToolButtonStyle}" Margin="0,0,6,0" Command="{Binding RefreshPreviewCommand}"/>
+                                    <Button Content="⬇" Style="{StaticResource PdfToolButtonStyle}" Margin="0,0,6,0" Command="{Binding DownloadPreviewCommand}"/>
+                                    <Button Content="🖨" Style="{StaticResource PdfToolButtonStyle}" Command="{Binding PrintPreviewCommand}"/>
                                 </StackPanel>
 
                                 <Button Grid.Column="2" Content="Avant" Style="{StaticResource ToolbarButtonStyle}" Background="#0EA5E920" Foreground="{StaticResource AccentBlueBrush}" BorderBrush="{StaticResource AccentBlueBrush}" BorderThickness="1" Command="{Binding OpenBeforeSignatureCommand}"/>

@@ -20,6 +20,8 @@ using System.Diagnostics;
 using System.Threading;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using Microsoft.Win32;
+using System.Text.RegularExpressions;
 
 namespace AcadSign.Desktop.ViewModels;
 
@@ -87,6 +89,24 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string _currentTime = DateTime.Now.ToString("HH:mm:ss");
 
+    [ObservableProperty]
+    private string _apiStatusText = "Connecté";
+
+    [ObservableProperty]
+    private string _s3StatusText = "En ligne";
+
+    [ObservableProperty]
+    private string _sisStatusText = "Prêt";
+
+    [ObservableProperty]
+    private int _currentPreviewPage = 1;
+
+    [ObservableProperty]
+    private int _previewPageCount = 1;
+
+    [ObservableProperty]
+    private int _previewZoomPercent = 100;
+
     private CancellationTokenSource? _previewCts;
 
     public int PendingCount => Documents.Count(d => IsPendingStatus(d.Status));
@@ -94,6 +114,9 @@ public partial class MainViewModel : ObservableObject
     public int SelectedCount => Documents.Count(d => d.IsSelected);
     public int TotalCount => Documents.Count;
     public bool HasSelectedItems => SelectedCount > 0;
+    public string BatchSigningButtonText => $"⚡ Signature{Environment.NewLine}par lot ({SelectedCount})";
+    public string PreviewPageDisplay => $"{CurrentPreviewPage} / {PreviewPageCount}";
+    public string PreviewZoomDisplay => $"{PreviewZoomPercent}%";
 
     public bool CanSign => SelectedDocument != null
                           && IsPendingStatus(SelectedDocument.Status)
@@ -133,6 +156,21 @@ public partial class MainViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(CanSign));
     }
+
+    partial void OnCurrentPreviewPageChanged(int value)
+    {
+        OnPropertyChanged(nameof(PreviewPageDisplay));
+    }
+
+    partial void OnPreviewPageCountChanged(int value)
+    {
+        OnPropertyChanged(nameof(PreviewPageDisplay));
+    }
+
+    partial void OnPreviewZoomPercentChanged(int value)
+    {
+        OnPropertyChanged(nameof(PreviewZoomDisplay));
+    }
     
     [RelayCommand]
     private async Task LoadDocumentsAsync()
@@ -141,6 +179,7 @@ public partial class MainViewModel : ObservableObject
         {
             IsLoading = true;
             StatusText = "Chargement des documents...";
+            ApiStatusText = "Chargement";
             
             var docs = await _apiClient.GetPendingDocumentsAsync();
             Documents.Clear();
@@ -160,10 +199,12 @@ public partial class MainViewModel : ObservableObject
                 SelectedDocument = Documents[0];
             }
             
+            ApiStatusText = "Connecté";
             StatusText = $"{Documents.Count} document(s) en attente";
         }
         catch (Exception ex)
         {
+            ApiStatusText = "Erreur";
             StatusText = $"Erreur: {ex.Message}";
         }
         finally
@@ -188,6 +229,7 @@ public partial class MainViewModel : ObservableObject
         {
             IsLoading = true;
             StatusText = "Génération des attestations en cours...";
+            SisStatusText = "Actif";
 
             var result = await _apiClient.GenerateAttestationsFromSisAsync();
 
@@ -213,6 +255,7 @@ public partial class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
+            SisStatusText = "Erreur";
             StatusText = $"Erreur génération: {ex.Message}";
             return;
         }
@@ -221,6 +264,8 @@ public partial class MainViewModel : ObservableObject
             IsLoading = false;
             OnPropertyChanged(nameof(CanSign));
         }
+
+        SisStatusText = "Prêt";
 
         await LoadDocumentsUiCommand.ExecuteAsync(null);
 
@@ -287,6 +332,7 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(SelectedCount));
         OnPropertyChanged(nameof(TotalCount));
         OnPropertyChanged(nameof(HasSelectedItems));
+        OnPropertyChanged(nameof(BatchSigningButtonText));
     }
 
     private static bool IsPendingStatus(string? status)
@@ -386,10 +432,11 @@ public partial class MainViewModel : ObservableObject
     partial void OnSelectedDocumentChanged(DocumentDto? value)
     {
         IsSignedPreview = false;
+        ResetPreviewNavigation();
         _ = LoadPreviewAsync(value, signed: false);
     }
 
-    private async Task LoadPreviewAsync(DocumentDto? document, bool signed)
+    private async Task LoadPreviewAsync(DocumentDto? document, bool signed, bool forceReload = false)
     {
         try
         {
@@ -399,6 +446,7 @@ public partial class MainViewModel : ObservableObject
 
             if (document == null)
             {
+                ResetPreviewNavigation();
                 PreviewUri = null;
                 PreviewStatusText = string.Empty;
                 return;
@@ -406,6 +454,18 @@ public partial class MainViewModel : ObservableObject
 
             IsPreviewLoading = true;
             PreviewStatusText = "Téléchargement du PDF...";
+
+            var existingPath = GetPreviewPath(document, signed);
+            if (!forceReload
+                && !string.IsNullOrWhiteSpace(existingPath)
+                && File.Exists(existingPath))
+            {
+                UpdatePreviewMetadata(File.ReadAllBytes(existingPath));
+                ApplyPreviewUri(existingPath);
+                PreviewStatusText = string.Empty;
+                S3StatusText = "En ligne";
+                return;
+            }
 
             var bytes = await _apiClient.DownloadDocumentAsync(document.Id);
             token.ThrowIfCancellationRequested();
@@ -421,8 +481,10 @@ public partial class MainViewModel : ObservableObject
             else
                 document.UnsignedPreviewPath = filePath;
 
-            PreviewUri = new Uri(filePath);
+            UpdatePreviewMetadata(bytes);
+            ApplyPreviewUri(filePath);
             PreviewStatusText = string.Empty;
+            S3StatusText = "En ligne";
         }
         catch (OperationCanceledException)
         {
@@ -431,6 +493,7 @@ public partial class MainViewModel : ObservableObject
         {
             PreviewUri = null;
             PreviewStatusText = $"Erreur prévisualisation: {ex.Message}";
+            S3StatusText = "Erreur";
         }
         finally
         {
@@ -466,7 +529,8 @@ public partial class MainViewModel : ObservableObject
         if (!string.IsNullOrWhiteSpace(SelectedDocument.UnsignedPreviewPath)
             && File.Exists(SelectedDocument.UnsignedPreviewPath))
         {
-            PreviewUri = new Uri(SelectedDocument.UnsignedPreviewPath);
+            UpdatePreviewMetadata(File.ReadAllBytes(SelectedDocument.UnsignedPreviewPath));
+            ApplyPreviewUri(SelectedDocument.UnsignedPreviewPath);
             return;
         }
 
@@ -487,11 +551,178 @@ public partial class MainViewModel : ObservableObject
         if (!string.IsNullOrWhiteSpace(SelectedDocument.SignedPreviewPath)
             && File.Exists(SelectedDocument.SignedPreviewPath))
         {
-            PreviewUri = new Uri(SelectedDocument.SignedPreviewPath);
+            UpdatePreviewMetadata(File.ReadAllBytes(SelectedDocument.SignedPreviewPath));
+            ApplyPreviewUri(SelectedDocument.SignedPreviewPath);
             return;
         }
 
         _ = LoadPreviewAsync(SelectedDocument, signed: true);
+    }
+
+    [RelayCommand]
+    private void PreviousPreviewPage()
+    {
+        if (SelectedDocument == null)
+        {
+            StatusText = "Sélectionnez un document";
+            return;
+        }
+
+        if (CurrentPreviewPage <= 1)
+        {
+            return;
+        }
+
+        CurrentPreviewPage -= 1;
+        var previewPath = GetPreviewPath(SelectedDocument, IsSignedPreview);
+        if (!string.IsNullOrWhiteSpace(previewPath) && File.Exists(previewPath))
+        {
+            ApplyPreviewUri(previewPath);
+        }
+    }
+
+    [RelayCommand]
+    private void NextPreviewPage()
+    {
+        if (SelectedDocument == null)
+        {
+            StatusText = "Sélectionnez un document";
+            return;
+        }
+
+        if (CurrentPreviewPage >= PreviewPageCount)
+        {
+            return;
+        }
+
+        CurrentPreviewPage += 1;
+        var previewPath = GetPreviewPath(SelectedDocument, IsSignedPreview);
+        if (!string.IsNullOrWhiteSpace(previewPath) && File.Exists(previewPath))
+        {
+            ApplyPreviewUri(previewPath);
+        }
+    }
+
+    [RelayCommand]
+    private void ZoomOutPreview()
+    {
+        if (SelectedDocument == null)
+        {
+            StatusText = "Sélectionnez un document";
+            return;
+        }
+
+        PreviewZoomPercent = Math.Max(50, PreviewZoomPercent - 10);
+        var previewPath = GetPreviewPath(SelectedDocument, IsSignedPreview);
+        if (!string.IsNullOrWhiteSpace(previewPath) && File.Exists(previewPath))
+        {
+            ApplyPreviewUri(previewPath);
+        }
+    }
+
+    [RelayCommand]
+    private void ZoomInPreview()
+    {
+        if (SelectedDocument == null)
+        {
+            StatusText = "Sélectionnez un document";
+            return;
+        }
+
+        PreviewZoomPercent = Math.Min(250, PreviewZoomPercent + 10);
+        var previewPath = GetPreviewPath(SelectedDocument, IsSignedPreview);
+        if (!string.IsNullOrWhiteSpace(previewPath) && File.Exists(previewPath))
+        {
+            ApplyPreviewUri(previewPath);
+        }
+    }
+
+    [RelayCommand]
+    private async Task RefreshPreviewAsync()
+    {
+        if (SelectedDocument == null)
+        {
+            StatusText = "Sélectionnez un document";
+            return;
+        }
+
+        StatusText = "Actualisation de l'aperçu...";
+        await LoadPreviewAsync(SelectedDocument, IsSignedPreview, forceReload: true);
+        if (PreviewUri != null)
+        {
+            StatusText = "Aperçu actualisé";
+        }
+    }
+
+    [RelayCommand]
+    private async Task DownloadPreviewAsync()
+    {
+        if (SelectedDocument == null)
+        {
+            StatusText = "Sélectionnez un document";
+            return;
+        }
+
+        var previewPath = GetPreviewPath(SelectedDocument, IsSignedPreview);
+        if (string.IsNullOrWhiteSpace(previewPath) || !File.Exists(previewPath))
+        {
+            await LoadPreviewAsync(SelectedDocument, IsSignedPreview);
+            previewPath = GetPreviewPath(SelectedDocument, IsSignedPreview);
+        }
+
+        if (string.IsNullOrWhiteSpace(previewPath) || !File.Exists(previewPath))
+        {
+            StatusText = "Aucun fichier disponible à télécharger";
+            return;
+        }
+
+        var dialog = new SaveFileDialog
+        {
+            Filter = "PDF (*.pdf)|*.pdf",
+            FileName = BuildSafeAttestationFileName(SelectedDocument, new HashSet<string>(StringComparer.OrdinalIgnoreCase)),
+            AddExtension = true,
+            DefaultExt = ".pdf"
+        };
+
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        File.Copy(previewPath, dialog.FileName, overwrite: true);
+        StatusText = $"Fichier enregistré: {dialog.FileName}";
+    }
+
+    [RelayCommand]
+    private async Task PrintPreviewAsync()
+    {
+        if (SelectedDocument == null)
+        {
+            StatusText = "Sélectionnez un document";
+            return;
+        }
+
+        var previewPath = GetPreviewPath(SelectedDocument, IsSignedPreview);
+        if (string.IsNullOrWhiteSpace(previewPath) || !File.Exists(previewPath))
+        {
+            await LoadPreviewAsync(SelectedDocument, IsSignedPreview);
+            previewPath = GetPreviewPath(SelectedDocument, IsSignedPreview);
+        }
+
+        if (string.IsNullOrWhiteSpace(previewPath) || !File.Exists(previewPath))
+        {
+            StatusText = "Aucun fichier disponible à imprimer";
+            return;
+        }
+
+        Process.Start(new ProcessStartInfo
+        {
+            FileName = previewPath,
+            UseShellExecute = true,
+            Verb = "print"
+        });
+
+        StatusText = "Impression lancée";
     }
 
     [RelayCommand]
@@ -725,6 +956,37 @@ public partial class MainViewModel : ObservableObject
 
         return sb.ToString().Normalize(NormalizationForm.FormC);
     }
+
+    private void ResetPreviewNavigation()
+    {
+        CurrentPreviewPage = 1;
+        PreviewPageCount = 1;
+        PreviewZoomPercent = 100;
+        OnPropertyChanged(nameof(PreviewPageDisplay));
+        OnPropertyChanged(nameof(PreviewZoomDisplay));
+    }
+
+    private void UpdatePreviewMetadata(byte[] pdfBytes)
+    {
+        PreviewPageCount = CountPdfPages(pdfBytes);
+        CurrentPreviewPage = Math.Max(1, Math.Min(CurrentPreviewPage, PreviewPageCount));
+    }
+
+    private void ApplyPreviewUri(string filePath)
+    {
+        var absoluteUri = new Uri(filePath).AbsoluteUri;
+        PreviewUri = new Uri($"{absoluteUri}#page={CurrentPreviewPage}&zoom={PreviewZoomPercent}");
+    }
+
+    private static int CountPdfPages(byte[] pdfBytes)
+    {
+        var content = Encoding.ASCII.GetString(pdfBytes);
+        var count = Regex.Matches(content, @"/Type\s*/Page\b", RegexOptions.IgnoreCase).Count;
+        return Math.Max(1, count);
+    }
+
+    private static string? GetPreviewPath(DocumentDto document, bool signed)
+        => signed ? document.SignedPreviewPath : document.UnsignedPreviewPath;
 
     private static string BuildSafeAttestationFileName(DocumentDto document, HashSet<string> usedFileNames)
     {

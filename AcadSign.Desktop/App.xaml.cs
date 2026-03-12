@@ -96,12 +96,6 @@ public partial class App : Application
                         LogStartup("Token deletion failed");
                     }
                 }
-                else if (File.Exists(tokenFilePath))
-                {
-                    LogStartup("Remembered token file found, opening main window");
-                    ShowMainWindow();
-                    return;
-                }
 
                 var authService = _serviceProvider.GetRequiredService<IAuthenticationService>();
                 LogStartup("Authentication service resolved");

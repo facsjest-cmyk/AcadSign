@@ -32,15 +32,18 @@ public static class DependencyInjection
         var connectionString = builder.Configuration.GetConnectionString("AcadSign.BackendDb");
         Guard.Against.Null(connectionString, message: "Connection string 'AcadSign.BackendDb' not found.");
 
-        builder.Services.AddScoped<ISaveChangesInterceptor, AuditableEntityInterceptor>();
-        builder.Services.AddScoped<ISaveChangesInterceptor, DispatchDomainEventsInterceptor>();
-        builder.Services.AddScoped<ISaveChangesInterceptor, EncryptionInterceptor>();
-        builder.Services.AddScoped<IMaterializationInterceptor, DecryptionInterceptor>();
+        builder.Services.AddSingleton<AuditableEntityInterceptor>();
+        builder.Services.AddSingleton<DispatchDomainEventsInterceptor>();
+        builder.Services.AddSingleton<EncryptionInterceptor>();
+        builder.Services.AddSingleton<DecryptionInterceptor>();
 
         builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
         {
-            options.AddInterceptors(sp.GetServices<ISaveChangesInterceptor>());
-            options.AddInterceptors(sp.GetServices<IMaterializationInterceptor>());
+            options.AddInterceptors(
+                sp.GetRequiredService<AuditableEntityInterceptor>(),
+                sp.GetRequiredService<DispatchDomainEventsInterceptor>(),
+                sp.GetRequiredService<EncryptionInterceptor>(),
+                sp.GetRequiredService<DecryptionInterceptor>());
             options.UseNpgsql(connectionString);
             options.ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
         });
