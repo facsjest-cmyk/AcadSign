@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+artifacts/
+tests/
+.devcontainer/
+.github/
+docs/
+infra/
+alertmanager/
+prometheus/
