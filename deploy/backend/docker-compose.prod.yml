@@ -23,8 +23,7 @@ services:
     env_file:
       - ./.env.prod
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "19001:9001"
     volumes:
       - minio-data:/data
     networks:
