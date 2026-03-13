@@ -62,12 +62,9 @@ builder.Services.AddAuthentication(options =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    // TODO: Story 1.3 - PostgreSQL sera configuré dans Story 1.3
-    await app.InitialiseDatabaseAsync();
-}
-else
+await app.InitialiseDatabaseAsync();
+
+if (!app.Environment.IsDevelopment())
 {
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
