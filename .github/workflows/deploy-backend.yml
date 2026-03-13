@@ -62,72 +62,45 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, X64]
     needs: build
     environment: production
-    permissions:
-      contents: read
-      packages: read
     timeout-minutes: 30
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Configure SSH
-        env:
-          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
-          DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_SSH_KNOWN_HOSTS }}
-        run: |
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-          printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          printf '%s\n' "$DEPLOY_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          chmod 644 ~/.ssh/known_hosts
-
       - name: Ensure remote deploy directory exists
-        env:
-          DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
-          DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
         run: |
-          ssh "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" "mkdir -p '$DEPLOY_PATH'"
+          mkdir -p "${{ env.DEPLOY_PATH }}"
 
-      - name: Upload Docker Compose file
-        env:
-          DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
-          DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
+      - name: Copy Docker Compose file to deploy path
         run: |
-          scp deploy/backend/docker-compose.prod.yml "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST:$DEPLOY_PATH/docker-compose.prod.yml"
+          cp deploy/backend/docker-compose.prod.yml "${{ env.DEPLOY_PATH }}/docker-compose.prod.yml"
 
-      - name: Authenticate remote host to GHCR
+      - name: Authenticate to GHCR
         env:
-          DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
-          DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
           GHCR_USERNAME: ${{ secrets.GHCR_USERNAME }}
           GHCR_READ_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
         run: |
-          printf '%s' "$GHCR_READ_TOKEN" | ssh "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" "docker login ghcr.io -u '$GHCR_USERNAME' --password-stdin"
+          echo "$GHCR_READ_TOKEN" | docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
 
       - name: Deploy backend stack
         env:
-          DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
-          DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
           IMAGE_REPOSITORY: ${{ needs.build.outputs.image_repository }}
           IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
         run: |
-          ssh "$DEPLOY_SSH_USER@$DEPLOY_SSH_HOST" "IMAGE_REPOSITORY='$IMAGE_REPOSITORY' IMAGE_TAG='$IMAGE_TAG' DEPLOY_PATH='$DEPLOY_PATH' bash -s" <<'EOF'
-          set -euo pipefail
-          cd "$DEPLOY_PATH"
+          cd "${{ env.DEPLOY_PATH }}"
 
           if [ ! -f .env.prod ]; then
-            echo ".env.prod is missing in $DEPLOY_PATH" >&2
+            echo ".env.prod is missing in ${{ env.DEPLOY_PATH }}" >&2
             exit 1
           fi
 
           cat > .deploy.env <<DEPLOYVARS
-IMAGE_REPOSITORY=${IMAGE_REPOSITORY}
-IMAGE_TAG=${IMAGE_TAG}
-DEPLOYVARS
+          IMAGE_REPOSITORY=${IMAGE_REPOSITORY}
+          IMAGE_TAG=${IMAGE_TAG}
+          DEPLOYVARS
           chmod 600 .deploy.env
 
           docker compose --env-file .deploy.env -f docker-compose.prod.yml pull api
@@ -146,4 +119,3 @@ DEPLOYVARS
 
           docker compose --env-file .deploy.env -f docker-compose.prod.yml logs --tail 200 api
           exit 1
-          EOF
