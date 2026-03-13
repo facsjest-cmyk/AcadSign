@@ -15,7 +15,14 @@ public class AuthenticationService : IAuthenticationService
     {
         // Utiliser HTTP au lieu de HTTPS pour éviter les problèmes de certificat
         _httpClient = new HttpClient();
-        _apiBaseUrl = $"{AcadSign.Desktop.Properties.Settings.Default.ApiEndpoint.TrimEnd('/')}/api/v1";
+        
+        var endpoint = AcadSign.Desktop.Properties.Settings.Default.ApiEndpoint;
+        if (endpoint.Contains("localhost:5000"))
+        {
+            endpoint = "http://10.2.22.210:18080";
+        }
+        
+        _apiBaseUrl = $"{endpoint.TrimEnd('/')}/api/v1";
     }
 
     public async Task<AuthenticationResult> LoginAsync(string username, string password)

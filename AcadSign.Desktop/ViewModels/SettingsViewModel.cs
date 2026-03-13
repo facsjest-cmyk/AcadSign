@@ -10,7 +10,7 @@ public partial class SettingsViewModel : ObservableObject
     private readonly INavigationService _navigationService;
     
     [ObservableProperty]
-    private string _apiEndpoint = "http://localhost:5000";
+    private string _apiEndpoint = "http://10.2.22.210:18080";
     
     [ObservableProperty]
     private bool _autoDetectDongle = true;
@@ -43,7 +43,7 @@ public partial class SettingsViewModel : ObservableObject
     {
         // TODO: Implémenter la persistance des paramètres
         // Pour l'instant, utiliser les valeurs par défaut
-        ApiEndpoint = "http://localhost:5000";
+        ApiEndpoint = "http://10.2.22.210:18080";
         AutoDetectDongle = true;
         SelectedLanguage = "Français";
     }

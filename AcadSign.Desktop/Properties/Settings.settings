@@ -3,7 +3,7 @@
   <Profiles />
   <Settings>
     <Setting Name="ApiEndpoint" Type="System.String" Scope="User">
-      <Value Profile="(Default)">http://localhost:5000</Value>
+      <Value Profile="(Default)">http://10.2.22.210:18080</Value>
     </Setting>
     <Setting Name="AutoDetectDongle" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">True</Value>
