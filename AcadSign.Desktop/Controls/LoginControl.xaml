@@ -19,7 +19,7 @@
                            FontWeight="Bold" 
                            Foreground="White"
                            HorizontalAlignment="Center"/>
-                <TextBlock Text="Université Hassan II - Casablanca" 
+                <TextBlock Text="FSJEST Tanger" 
                            FontSize="14" 
                            Foreground="#DCEBFF"
                            HorizontalAlignment="Center"
@@ -102,7 +102,7 @@
         
         <!-- Pied de page -->
         <Border Grid.Row="2" Background="{StaticResource PanelBrush}" Padding="20,15">
-            <TextBlock Text="© 2026 Université Hassan II - Casablanca" 
+            <TextBlock Text="© 2026 FSJEST Tanger" 
                        FontSize="12"
                        Foreground="{StaticResource MutedBrush}"
                        HorizontalAlignment="Center"/>
