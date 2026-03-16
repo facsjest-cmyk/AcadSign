@@ -198,6 +198,29 @@ public class ApplicationDbContextInitialiser
             }
         }
 
+        // Créer un document de test "UNSIGNED" pour que le directeur puisse tester la signature
+        var testDocumentId = Guid.Parse("11111111-2222-3333-4444-555555555555");
+        var testDoc = await _context.Documents.FirstOrDefaultAsync(d => d.PublicId == testDocumentId);
+        if (testDoc == null)
+        {
+            _context.Documents.Add(new Document
+            {
+                PublicId = testDocumentId,
+                DocumentType = "ATTESTATION_SCOLARITE",
+                StudentId = devStudentId,
+                Status = "UNSIGNED",
+                S3ObjectPath = "test-document.pdf" // Path factice pour que ça ne plante pas au téléchargement S3 (l'API dev gère ça)
+            });
+        }
+        else if (testDoc.Status == "SIGNED")
+        {
+            // Remettre le document en "UNSIGNED" pour le re-tester
+            testDoc.Status = "UNSIGNED";
+            testDoc.SignatureData = null;
+            testDoc.SignedAt = null;
+            testDoc.SignerName = null;
+        }
+
         await _context.SaveChangesAsync();
     }
 }
