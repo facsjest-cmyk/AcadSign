@@ -24,8 +24,32 @@ public class RefitApiClientService : IApiClientService
     {
         try
         {
-            _logger.LogInformation("Fetching pending documents from API");
-            return await _api.GetPendingDocumentsAsync();
+            _logger.LogInformation("Fetching pending documents from FSJEST API");
+
+            var response = await _api.GetPendingDocumentsAsync();
+
+            var docs = new List<DocumentDto>();
+            foreach (var p in response.Data)
+            {
+                docs.Add(new DocumentDto
+                {
+                    Id = Guid.NewGuid(), // identifiant interne côté desktop
+                    StudentName = p.StudentName,
+                    DocumentType = string.IsNullOrWhiteSpace(p.DocumentLabel)
+                        ? p.DocumentType
+                        : p.DocumentLabel,
+                    CreatedAt = p.CreatedAt ?? DateTime.Now,
+                    Status = "UNSIGNED",
+                    Reference = p.Id.ToString(),
+                    SourcePdfUrl = p.PdfUrl,
+                    UnsignedPreviewPath = null,
+                    SignedPreviewPath = null,
+                    IsSelected = true
+                });
+            }
+
+            _logger.LogInformation("Loaded {Count} pending documents from FSJEST", docs.Count);
+            return docs;
         }
         catch (Exception ex)
         {

@@ -31,6 +31,11 @@
         <conv:StatusToBorderBrushConverter x:Key="StatusBorder"/>
         <conv:ViewModeToLabelConverter x:Key="ViewModeLabel"/>
         <conv:DocTypeToShortLabelConverter x:Key="DocTypeShort"/>
+        <!-- Converters pour le statut du dongle USB -->
+        <conv:DongleStatusToColorConverter x:Key="DongleStatusToColorConverter"/>
+        <conv:DongleStatusToBackgroundConverter x:Key="DongleStatusToBackgroundConverter"/>
+        <conv:DongleStatusToBorderBrushConverter x:Key="DongleStatusToBorderBrushConverter"/>
+        <conv:DongleStatusToLabelConverter x:Key="DongleStatusToLabelConverter"/>
     </Window.Resources>
 
     <Border Background="{StaticResource BgBrush}" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="14" Margin="6">
@@ -136,8 +141,29 @@
                         </StackPanel>
 
                         <Grid Grid.Row="2" Margin="10,0,10,12">
-                            <TextBox x:Name="SearchBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource DarkInputStyle}" Height="34" Foreground="White" CaretBrush="White"/>
-                            <TextBlock Text="⌕   Rechercher..." Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="12,0,0,0" IsHitTestVisible="False" Visibility="{Binding Text, ElementName=SearchBox, Converter={StaticResource StringNotEmptyToVisibilityConverter}, ConverterParameter=invert}"/>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- Recherche texte -->
+                            <Grid Grid.Row="0">
+                                <TextBox x:Name="SearchBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource DarkInputStyle}" Height="34" Foreground="White" CaretBrush="White"/>
+                                <TextBlock Text="⌕   Rechercher..." Foreground="{StaticResource MutedBrush}" VerticalAlignment="Center" Margin="12,0,0,0" IsHitTestVisible="False" Visibility="{Binding Text, ElementName=SearchBox, Converter={StaticResource StringNotEmptyToVisibilityConverter}, ConverterParameter=invert}"/>
+                            </Grid>
+
+                            <!-- Filtre par date (de / à) -->
+                            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,6,0,0">
+                                <DatePicker Width="120"
+                                            SelectedDate="{Binding FromDateFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            DisplayDateEnd="{Binding ToDateFilter}"
+                                            HorizontalAlignment="Left"/>
+                                <TextBlock Text=" au " Foreground="{StaticResource SubBrush}" VerticalAlignment="Center" Margin="6,0,6,0"/>
+                                <DatePicker Width="120"
+                                            SelectedDate="{Binding ToDateFilter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                            DisplayDateStart="{Binding FromDateFilter}"
+                                            HorizontalAlignment="Left"/>
+                            </StackPanel>
                         </Grid>
 
                         <ListBox Grid.Row="3" ItemsSource="{Binding FilteredDocuments}" SelectedItem="{Binding SelectedDocument}" Style="{StaticResource DocListBoxStyle}" Margin="0,0,2,0">
@@ -164,6 +190,10 @@
                                                 </Border>
                                             </StackPanel>
                                             <TextBlock Text="{Binding DocumentType}" Foreground="#64748B" FontSize="11" Margin="0,4,0,0"/>
+                                            <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                                <TextBlock Text="{Binding CreatedAt, StringFormat={}{0:dd/MM/yyyy}}" Foreground="#475569" FontSize="10"/>
+                                                <TextBlock Text="{Binding Reference, StringFormat= # {0}}" Foreground="#64748B" FontFamily="Consolas" FontSize="10" Margin="10,0,0,0"/>
+                                            </StackPanel>
                                         </StackPanel>
 
                                         <Grid Grid.Column="3" VerticalAlignment="Center" Margin="10,0,0,0">
@@ -375,15 +405,36 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Ellipse Width="6" Height="6" Fill="{StaticResource GreenBrush}" Margin="0,0,6,0"/>
-                        <TextBlock Text="Connecté — Barid Al-Maghrib e-Sign" Foreground="{StaticResource SubBrush}" FontSize="11" Margin="0,0,18,0"/>
-                        <TextBlock Text="📄" Foreground="{StaticResource SubBrush}" FontSize="11" Margin="0,0,5,0"/>
-                        <TextBlock Text="{Binding TotalCount}" Foreground="{StaticResource SubBrush}" FontSize="11" Margin="0,0,14,0"/>
-                        <TextBlock Text="✅" Foreground="{StaticResource GreenBrush}" FontSize="11" Margin="0,0,5,0"/>
-                        <TextBlock Text="{Binding SignedCount}" Foreground="{StaticResource SubBrush}" FontSize="11" Margin="0,0,14,0"/>
-                        <TextBlock Text="⏳" Foreground="{StaticResource AmberBrush}" FontSize="11" Margin="0,0,5,0"/>
-                        <TextBlock Text="{Binding PendingCount}" Foreground="{StaticResource SubBrush}" FontSize="11" Margin="0,0,18,0"/>
-                        <TextBlock Text="{Binding StatusText}" Foreground="{StaticResource MutedBrush}" FontSize="11"/>
+                        <!-- Statut du dongle (Connecté / Hors ligne) -->
+                        <Button Command="{Binding DongleStatus.VerifyUiCommand}"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="0"
+                                Cursor="Hand">
+                            <Border Padding="8,2"
+                                    CornerRadius="10"
+                                    Background="{Binding DongleStatus.IsDongleConnected, Converter={StaticResource DongleStatusToBackgroundConverter}}"
+                                    BorderBrush="{Binding DongleStatus.IsDongleConnected, Converter={StaticResource DongleStatusToBorderBrushConverter}}"
+                                    BorderThickness="1">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Ellipse Width="6" Height="6" Margin="0,0,6,0"
+                                             Fill="{Binding DongleStatus.IsDongleConnected, Converter={StaticResource DongleStatusToColorConverter}}"/>
+                                    <TextBlock Text="{Binding DongleStatus.IsDongleConnected, Converter={StaticResource DongleStatusToLabelConverter}}"
+                                               Foreground="{StaticResource SubBrush}" FontSize="11"/>
+                                </StackPanel>
+                            </Border>
+                        </Button>
+
+                        <!-- Compteurs documents -->
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="📄" Foreground="{StaticResource SubBrush}" FontSize="11" Margin="0,0,5,0"/>
+                            <TextBlock Text="{Binding TotalCount}" Foreground="{StaticResource SubBrush}" FontSize="11" Margin="0,0,14,0"/>
+                            <TextBlock Text="✅" Foreground="{StaticResource GreenBrush}" FontSize="11" Margin="0,0,5,0"/>
+                            <TextBlock Text="{Binding SignedCount}" Foreground="{StaticResource SubBrush}" FontSize="11" Margin="0,0,14,0"/>
+                            <TextBlock Text="⏳" Foreground="{StaticResource AmberBrush}" FontSize="11" Margin="0,0,5,0"/>
+                            <TextBlock Text="{Binding PendingCount}" Foreground="{StaticResource SubBrush}" FontSize="11" Margin="0,0,18,0"/>
+                            <TextBlock Text="{Binding StatusText}" Foreground="{StaticResource MutedBrush}" FontSize="11"/>
+                        </StackPanel>
                     </StackPanel>
 
                     <TextBlock Grid.Column="1" Text="{Binding CurrentTime}" Foreground="{StaticResource SubBrush}" FontFamily="Consolas" FontSize="11" VerticalAlignment="Center"/>

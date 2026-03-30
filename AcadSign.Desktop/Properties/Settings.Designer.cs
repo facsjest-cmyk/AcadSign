@@ -15,7 +15,7 @@ namespace AcadSign.Desktop.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("http://localhost:5000")]
+        [global::System.Configuration.DefaultSettingValueAttribute("http://10.2.22.210")]
         public string ApiEndpoint {
             get {
                 return ((string)(this["ApiEndpoint"]));

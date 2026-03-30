@@ -22,6 +22,8 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using Microsoft.Win32;
 using System.Text.RegularExpressions;
+using System.Net.Http;
+using System.Net.Http.Headers;
 
 namespace AcadSign.Desktop.ViewModels;
 
@@ -99,6 +101,12 @@ public partial class MainViewModel : ObservableObject
     private string _sisStatusText = "Prêt";
 
     [ObservableProperty]
+    private DateTime? _fromDateFilter;
+
+    [ObservableProperty]
+    private DateTime? _toDateFilter;
+
+    [ObservableProperty]
     private int _currentPreviewPage = 1;
 
     [ObservableProperty]
@@ -170,6 +178,16 @@ public partial class MainViewModel : ObservableObject
     partial void OnPreviewZoomPercentChanged(int value)
     {
         OnPropertyChanged(nameof(PreviewZoomDisplay));
+    }
+    
+    partial void OnFromDateFilterChanged(DateTime? value)
+    {
+        ApplyFilter();
+    }
+
+    partial void OnToDateFilterChanged(DateTime? value)
+    {
+        ApplyFilter();
     }
     
     [RelayCommand]
@@ -467,7 +485,35 @@ public partial class MainViewModel : ObservableObject
                 return;
             }
 
-            var bytes = await _apiClient.DownloadDocumentAsync(document.Id);
+            byte[] bytes;
+
+            // Pour les documents FSJES, on dispose d'une URL directe vers le PDF (SourcePdfUrl)
+            if (!string.IsNullOrWhiteSpace(document.SourcePdfUrl))
+            {
+                using var httpClient = new HttpClient();
+
+                try
+                {
+                    // Récupérer le token JWT stocké et l'envoyer en Authorization: Bearer
+                    var (accessToken, _) = await _tokenStorageService.GetTokensAsync();
+                    if (!string.IsNullOrWhiteSpace(accessToken))
+                    {
+                        httpClient.DefaultRequestHeaders.Authorization =
+                            new AuthenticationHeaderValue("Bearer", accessToken);
+                    }
+                }
+                catch
+                {
+                    // En cas de problème de récupération du token, on tente quand même sans header
+                }
+
+                bytes = await httpClient.GetByteArrayAsync(document.SourcePdfUrl);
+            }
+            else
+            {
+                // Fallback pour les anciens documents qui utilisent encore l'API historique
+                bytes = await _apiClient.DownloadDocumentAsync(document.Id);
+            }
             token.ThrowIfCancellationRequested();
 
             var folder = Path.Combine(Path.GetTempPath(), "AcadSign", "previews");
@@ -905,6 +951,9 @@ public partial class MainViewModel : ObservableObject
             if (!MatchesSearch(d, q))
                 continue;
 
+            if (!MatchesDateRange(d))
+                continue;
+
             FilteredDocuments.Add(d);
         }
     }
@@ -935,9 +984,37 @@ public partial class MainViewModel : ObservableObject
             return true;
 
         var nq = NormalizeForSearch(q);
-        var name = NormalizeForSearch(d.StudentName ?? string.Empty);
 
-        return name.Contains(nq, StringComparison.Ordinal);
+        var name = NormalizeForSearch(d.StudentName ?? string.Empty);
+        var reference = NormalizeForSearch(d.Reference ?? string.Empty);
+        var dateText = d.CreatedAt.ToString("yyyy-MM-dd");
+
+        if (name.Contains(nq, StringComparison.Ordinal))
+            return true;
+
+        if (!string.IsNullOrEmpty(reference) && reference.Contains(nq, StringComparison.Ordinal))
+            return true;
+
+        if (!string.IsNullOrWhiteSpace(dateText) && dateText.Contains(q, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return false;
+    }
+
+    private bool MatchesDateRange(DocumentDto d)
+    {
+        if (FromDateFilter == null && ToDateFilter == null)
+            return true;
+
+        var date = d.CreatedAt.Date;
+
+        if (FromDateFilter != null && date < FromDateFilter.Value.Date)
+            return false;
+
+        if (ToDateFilter != null && date > ToDateFilter.Value.Date)
+            return false;
+
+        return true;
     }
 
     private static string NormalizeForSearch(string value)

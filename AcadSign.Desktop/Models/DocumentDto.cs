@@ -26,6 +26,9 @@ public class DocumentDto : ObservableObject
     public string? Level { get; set; }
     public string? Reference { get; set; }
 
+    // URL source du PDF côté backend (FSJEST), utilisée pour télécharger l'aperçu à la demande
+    public string? SourcePdfUrl { get; set; }
+
     public string? UnsignedPreviewPath
     {
         get => _unsignedPreviewPath;

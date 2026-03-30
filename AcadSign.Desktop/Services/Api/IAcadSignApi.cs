@@ -9,27 +9,27 @@ namespace AcadSign.Desktop.Services.Api;
 
 public interface IAcadSignApi
 {
-    [Get("/api/v1/documents/pending")]
-    Task<List<DocumentDto>> GetPendingDocumentsAsync();
+    // FSJEST: liste des documents en attente de signature (attestations)
+    // GET /api/v1/admin/documents/pending?status=READY_FOR_SIGNATURE
+    [Get("/api/v1/admin/documents/pending?status=READY_FOR_SIGNATURE")]
+    Task<PendingDocumentsResponse> GetPendingDocumentsAsync();
 
     [Post("/api/v1/admin/attestations/generate-from-sis")]
     Task<AttestationBatchGenerationResponse> GenerateAttestationsFromSisAsync();
     
+    // Endpoint hérité pour obtenir une URL de téléchargement (ancien backend)
     [Get("/api/v1/documents/{id}/download")]
     Task<DownloadUrlResponse> GetDownloadUrlAsync(Guid id);
-    
-    [Post("/api/v1/documents/{id}/signed")]
+
+    // Upload du PDF signé vers FSJEST
+    [Post("/api/v1/admin/documents/{id}/signed")]
     [Multipart]
     Task UploadSignedDocumentAsync(Guid id, [AliasAs("file")] StreamPart file);
 
     [Post("/api/v1/documents/{id}/resend-email")]
     Task ResendEmailAsync(Guid id);
     
-    [Post("/api/v1/auth/token")]
-    Task<TokenResponse> GetTokenAsync([Body] TokenRequest request);
-    
-    [Post("/api/v1/auth/refresh")]
-    Task<TokenResponse> RefreshTokenAsync([Body] RefreshTokenRequest request);
+    // Les endpoints d'authentification sont gérés par AuthenticationService, pas via Refit
 }
 
 public class DownloadUrlResponse
@@ -38,22 +38,25 @@ public class DownloadUrlResponse
     public DateTime ExpiresAt { get; set; }
 }
 
-public class TokenResponse
+// DTOs pour la réponse des documents en attente côté FSJEST
+
+public class PendingDocumentsResponse
 {
-    public string AccessToken { get; set; } = string.Empty;
-    public string RefreshToken { get; set; } = string.Empty;
-    public int ExpiresIn { get; set; }
+    public List<PendingDocumentDto> Data { get; set; } = new();
+    public string? RequestId { get; set; }
 }
 
-public class TokenRequest
+public class PendingDocumentDto
 {
-    public string Username { get; set; } = string.Empty;
-    public string Password { get; set; } = string.Empty;
-}
-
-public class RefreshTokenRequest
-{
-    public string RefreshToken { get; set; } = string.Empty;
+    public int Id { get; set; }
+    public string StudentName { get; set; } = string.Empty;
+    public int Apogee { get; set; }
+    public string DocumentType { get; set; } = string.Empty;
+    public string DocumentLabel { get; set; } = string.Empty;
+    public DateTime? CreatedAt { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public string Reference { get; set; } = string.Empty;
+    public string PdfUrl { get; set; } = string.Empty;
 }
 
 public class AttestationBatchGenerationFailure

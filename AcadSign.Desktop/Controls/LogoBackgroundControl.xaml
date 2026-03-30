@@ -1,0 +1,48 @@
+<UserControl x:Class="AcadSign.Desktop.Controls.LogoBackgroundControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="300" d:DesignWidth="300">
+    
+    <Grid>
+        <!-- Background with logo pattern -->
+        <Grid.Background>
+            <DrawingBrush TileMode="Tile" Viewport="0,0,200,200" ViewportUnits="Absolute">
+                <DrawingBrush.Drawing>
+                    <DrawingGroup>
+                        <GeometryDrawing Brush="{StaticResource LogoBackgroundBrush}">
+                            <GeometryDrawing.Geometry>
+                                <EllipseGeometry Center="100,100" RadiusX="80" RadiusY="80"/>
+                            </GeometryDrawing.Geometry>
+                        </GeometryDrawing>
+                        <GeometryDrawing Brush="{StaticResource AccentBlueBrush}">
+                            <GeometryDrawing.Geometry>
+                                <PathGeometry>
+                                    <PathFigure StartPoint="100,40">
+                                        <LineSegment Point="140,100"/>
+                                        <LineSegment Point="100,160"/>
+                                        <LineSegment Point="60,100"/>
+                                        <LineSegment Point="100,40"/>
+                                    </PathFigure>
+                                </PathGeometry>
+                            </GeometryDrawing.Geometry>
+                        </GeometryDrawing>
+                        <GeometryDrawing Brush="{StaticResource AccentIndigoBrush}">
+                            <GeometryDrawing.Geometry>
+                                <EllipseGeometry Center="100,100" RadiusX="30" RadiusY="30"/>
+                            </GeometryDrawing.Geometry>
+                        </GeometryDrawing>
+                    </DrawingGroup>
+                </DrawingBrush.Drawing>
+                <DrawingBrush.Opacity>
+                    0.1
+                </DrawingBrush.Opacity>
+            </DrawingBrush>
+        </Grid.Background>
+        
+        <!-- Content overlay -->
+        <ContentPresenter Content="{Binding RelativeSource={RelativeSource AncestorType=UserControl}, Path=Content}"/>
+    </Grid>
+</UserControl>

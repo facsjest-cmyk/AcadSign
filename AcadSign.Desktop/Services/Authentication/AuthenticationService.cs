@@ -13,15 +13,11 @@ public class AuthenticationService : IAuthenticationService
 
     public AuthenticationService()
     {
-        // Utiliser HTTP au lieu de HTTPS pour éviter les problèmes de certificat
+        // Utiliser HTTP vers le backend FSJEST
         _httpClient = new HttpClient();
-        
-        var endpoint = AcadSign.Desktop.Properties.Settings.Default.ApiEndpoint;
-        if (endpoint.Contains("localhost:5000"))
-        {
-            endpoint = "http://10.2.22.210:18080";
-        }
-        
+
+        // Forcer l'URL de base de l'API FSJEST (pas de port 18080)
+        var endpoint = "http://10.2.22.210";
         _apiBaseUrl = $"{endpoint.TrimEnd('/')}/api/v1";
     }
 
@@ -39,9 +35,15 @@ public class AuthenticationService : IAuthenticationService
 
         try
         {
-            // Appeler l'API backend pour l'authentification
-            var loginRequest = new { Username = username, Password = password };
-            var response = await _httpClient.PostAsJsonAsync($"{_apiBaseUrl}/auth/login", loginRequest);
+            // Appeler le nouvel endpoint FSJEST pour l'authentification
+            // POST /api/v1/auth/token
+            var loginRequest = new TokenRequest
+            {
+                Email = username,
+                Password = password
+            };
+
+            var response = await _httpClient.PostAsJsonAsync($"{_apiBaseUrl}/auth/token", loginRequest);
 
             if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
@@ -74,14 +76,40 @@ public class AuthenticationService : IAuthenticationService
                 };
             }
 
-            var loginResponse = await response.Content.ReadFromJsonAsync<ApiLoginResponse>();
+            // Lire le JSON brut et extraire data.accessToken / data.expiresIn
+            var json = await response.Content.ReadAsStringAsync();
+            string? accessToken = null;
+            int expiresIn = 0;
 
-            if (loginResponse == null || !loginResponse.Success)
+            try
+            {
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+                if (root.TryGetProperty("data", out var dataElement))
+                {
+                    if (dataElement.TryGetProperty("accessToken", out var accessTokenProp))
+                    {
+                        accessToken = accessTokenProp.GetString();
+                    }
+
+                    if (dataElement.TryGetProperty("expiresIn", out var expiresInProp)
+                        && expiresInProp.TryGetInt32(out var exp))
+                    {
+                        expiresIn = exp;
+                    }
+                }
+            }
+            catch (JsonException)
+            {
+                // On traitera comme une réponse invalide plus bas
+            }
+
+            if (string.IsNullOrWhiteSpace(accessToken))
             {
                 return new AuthenticationResult
                 {
                     IsSuccess = false,
-                    ErrorMessage = loginResponse?.ErrorMessage ?? "Erreur lors de la connexion."
+                    ErrorMessage = "Réponse de connexion invalide."
                 };
             }
 
@@ -89,9 +117,9 @@ public class AuthenticationService : IAuthenticationService
             return new AuthenticationResult
             {
                 IsSuccess = true,
-                AccessToken = loginResponse.AccessToken ?? string.Empty,
-                RefreshToken = loginResponse.RefreshToken ?? string.Empty,
-                ExpiresAt = loginResponse.ExpiresAt ?? DateTime.UtcNow.AddHours(8)
+                AccessToken = accessToken,
+                RefreshToken = string.Empty,
+                ExpiresAt = DateTime.UtcNow.AddSeconds(expiresIn > 0 ? expiresIn : 7200)
             };
         }
         catch (HttpRequestException ex)
@@ -112,14 +140,17 @@ public class AuthenticationService : IAuthenticationService
         }
     }
 
-    // Classe pour désérialiser la réponse de l'API
-    private class ApiLoginResponse
+    // DTOs pour la nouvelle API de token FSJEST
+    private class TokenRequest
     {
-        public bool Success { get; set; }
-        public string? ErrorMessage { get; set; }
-        public string? AccessToken { get; set; }
-        public string? RefreshToken { get; set; }
-        public DateTime? ExpiresAt { get; set; }
+        public string Email { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+
+    private class TokenResponse
+    {
+        public string AccessToken { get; set; } = string.Empty;
+        public int ExpiresIn { get; set; }
     }
 
     private class ApiErrorResponse
