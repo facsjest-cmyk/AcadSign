@@ -19,3 +19,10 @@ obj/
 # OS
 .DS_Store
 Thumbs.db
+
+ # Desktop installer build artifacts
+ deploy/desktop/publish/
+ deploy/desktop/output/
+
+ # Backup files
+ *.bak*
