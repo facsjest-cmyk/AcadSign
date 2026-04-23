@@ -276,6 +276,22 @@ public partial class MainViewModel : ObservableObject
                         break;
                     }
                 }
+
+                if (string.IsNullOrWhiteSpace(downloadUrl))
+                {
+                    foreach (var asset in assetsProp.EnumerateArray())
+                    {
+                        var name = asset.TryGetProperty("name", out var nameProp) ? nameProp.GetString() : null;
+                        if (!string.IsNullOrWhiteSpace(name) && name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                        {
+                            downloadUrl = asset.TryGetProperty("browser_download_url", out var dlProp) ? dlProp.GetString() : null;
+                            if (!string.IsNullOrWhiteSpace(downloadUrl))
+                            {
+                                break;
+                            }
+                        }
+                    }
+                }
             }
 
             downloadUrl ??= htmlUrl;
