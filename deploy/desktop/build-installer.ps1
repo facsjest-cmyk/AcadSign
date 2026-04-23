@@ -20,7 +20,7 @@ New-Item -ItemType Directory -Force -Path $publishDir | Out-Null
 New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 
 Write-Host "Publishing Desktop app..."
-& dotnet publish $csproj -c $Configuration -r $Rid -o $publishDir /p:SelfContained=true /p:PublishReadyToRun=true
+& dotnet publish $csproj -c $Configuration -r $Rid -o $publishDir /p:SelfContained=true /p:PublishReadyToRun=true /p:Version=$Version /p:AssemblyVersion=$Version /p:FileVersion=$Version /p:InformationalVersion=$Version
 
 $isccCandidates = @()
 

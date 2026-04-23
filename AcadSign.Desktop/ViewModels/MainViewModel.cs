@@ -24,18 +24,39 @@ using Microsoft.Win32;
 using System.Text.RegularExpressions;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Reflection;
+using Microsoft.Extensions.DependencyInjection;
+using AcadSign.Desktop.Properties;
+using iText.Kernel.Pdf;
+using iText.Kernel.Pdf.Canvas;
+using iText.Kernel.Colors;
+using iText.Layout;
+using iText.Layout.Element;
+using iText.Layout.Properties;
+using iText.IO.Font.Constants;
+using iText.Kernel.Font;
+using System.Text.Json;
 
 namespace AcadSign.Desktop.ViewModels;
 
 public partial class MainViewModel : ObservableObject
 {
+    private const string UpdateRepoOwner = "facsjest-cmyk";
+    private const string UpdateRepoName = "AcadSign";
+    private const string UpdateAssetName = "AcadSign-Setup.exe";
+
+    private static int _updateCheckStarted;
+
     private readonly IApiClientService _apiClient;
     private readonly IAuthenticationService _authenticationService;
     private readonly ITokenStorageService _tokenStorageService;
     private readonly INavigationService _navigationService;
     private readonly IBatchSigningService _batchSigningService;
+    private readonly IServiceProvider _serviceProvider;
 
     private bool _suppressDocumentNotifications;
+
+    private CancellationTokenSource? _usbAlertCts;
 
     public DongleStatusViewModel DongleStatus { get; }
 
@@ -101,6 +122,12 @@ public partial class MainViewModel : ObservableObject
     private string _sisStatusText = "Prêt";
 
     [ObservableProperty]
+    private bool _isUsbAlertVisible;
+
+    [ObservableProperty]
+    private string _usbAlertText = string.Empty;
+
+    [ObservableProperty]
     private DateTime? _fromDateFilter;
 
     [ObservableProperty]
@@ -137,7 +164,8 @@ public partial class MainViewModel : ObservableObject
         ITokenStorageService tokenStorageService,
         IBatchSigningService batchSigningService,
         INavigationService navigationService,
-        DongleStatusViewModel dongleStatus)
+        DongleStatusViewModel dongleStatus,
+        IServiceProvider serviceProvider)
     {
         _apiClient = apiClient;
         _authenticationService = authenticationService;
@@ -145,6 +173,7 @@ public partial class MainViewModel : ObservableObject
         _batchSigningService = batchSigningService;
         _navigationService = navigationService;
         DongleStatus = dongleStatus;
+        _serviceProvider = serviceProvider;
 
         LoadDocumentsUiCommand = new AsyncRelayCommand(LoadDocumentsAsync);
 
@@ -157,7 +186,127 @@ public partial class MainViewModel : ObservableObject
         timer.Tick += (_, _) => CurrentTime = DateTime.Now.ToString("HH:mm:ss");
         timer.Start();
         
+        _ = CheckForUpdatesAsync();
         _ = LoadDocumentsAsync();
+    }
+
+    private static Version? GetCurrentAppVersion()
+    {
+        try
+        {
+            return Assembly.GetExecutingAssembly().GetName().Version;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static Version? TryParseVersion(string? input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return null;
+        }
+
+        var v = input.Trim();
+        if (v.StartsWith("v", StringComparison.OrdinalIgnoreCase))
+        {
+            v = v.Substring(1);
+        }
+
+        if (Version.TryParse(v, out var version))
+        {
+            return version;
+        }
+
+        return null;
+    }
+
+    private async Task CheckForUpdatesAsync()
+    {
+        if (Interlocked.Exchange(ref _updateCheckStarted, 1) == 1)
+        {
+            return;
+        }
+
+        try
+        {
+            var currentVersion = GetCurrentAppVersion();
+            if (currentVersion == null)
+            {
+                return;
+            }
+
+            using var http = new HttpClient();
+            http.Timeout = TimeSpan.FromSeconds(10);
+            http.DefaultRequestHeaders.UserAgent.Clear();
+            http.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("AcadSign", currentVersion.ToString()));
+            http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
+
+            var url = $"https://api.github.com/repos/{UpdateRepoOwner}/{UpdateRepoName}/releases/latest";
+            var json = await http.GetStringAsync(url);
+
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            var tagName = root.TryGetProperty("tag_name", out var tagProp) ? tagProp.GetString() : null;
+            var htmlUrl = root.TryGetProperty("html_url", out var htmlProp) ? htmlProp.GetString() : null;
+
+            var latestVersion = TryParseVersion(tagName);
+            if (latestVersion == null)
+            {
+                return;
+            }
+
+            if (latestVersion <= currentVersion)
+            {
+                return;
+            }
+
+            string? downloadUrl = null;
+            if (root.TryGetProperty("assets", out var assetsProp) && assetsProp.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var asset in assetsProp.EnumerateArray())
+                {
+                    var name = asset.TryGetProperty("name", out var nameProp) ? nameProp.GetString() : null;
+                    if (!string.IsNullOrWhiteSpace(name) && string.Equals(name, UpdateAssetName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        downloadUrl = asset.TryGetProperty("browser_download_url", out var dlProp) ? dlProp.GetString() : null;
+                        break;
+                    }
+                }
+            }
+
+            downloadUrl ??= htmlUrl;
+            if (string.IsNullOrWhiteSpace(downloadUrl))
+            {
+                return;
+            }
+
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                var result = MessageBox.Show(
+                    $"Une nouvelle version d'AcadSign est disponible.\n\nVersion installée: {currentVersion}\nNouvelle version: {latestVersion}\n\nVoulez-vous télécharger la mise à jour ?",
+                    "Mise à jour disponible",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Information);
+
+                if (result == MessageBoxResult.Yes)
+                {
+                    try
+                    {
+                        Process.Start(new ProcessStartInfo(downloadUrl) { UseShellExecute = true });
+                    }
+                    catch
+                    {
+                    }
+                }
+            });
+        }
+        catch
+        {
+        }
     }
 
     partial void OnPinChanged(string value)
@@ -360,9 +509,268 @@ public partial class MainViewModel : ObservableObject
     private static bool IsSignedStatus(string? status)
         => string.Equals(status, "SIGNED", StringComparison.OrdinalIgnoreCase)
            || string.Equals(status, "EMAIL_SENT", StringComparison.OrdinalIgnoreCase);
+
+    private static string? TryGetBackendBaseUrl(string? apiEndpoint)
+    {
+        if (string.IsNullOrWhiteSpace(apiEndpoint))
+        {
+            return null;
+        }
+
+        if (!Uri.TryCreate(apiEndpoint.Trim(), UriKind.Absolute, out var uri))
+        {
+            return null;
+        }
+
+        var builder = new UriBuilder(uri)
+        {
+            Port = 18080,
+            Path = string.Empty,
+            Query = string.Empty,
+            Fragment = string.Empty
+        };
+
+        return builder.Uri.GetLeftPart(UriPartial.Authority).TrimEnd('/');
+    }
+
+    private static string? TryResolveFsjestUrl(string? apiEndpoint, string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return null;
+        }
+
+        var trimmed = url.Trim();
+        if (Uri.TryCreate(trimmed, UriKind.Absolute, out var absolute))
+        {
+            return absolute.ToString();
+        }
+
+        if (string.IsNullOrWhiteSpace(apiEndpoint))
+        {
+            return null;
+        }
+
+        var baseUrl = apiEndpoint.Trim().TrimEnd('/');
+        if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var baseUri))
+        {
+            return null;
+        }
+
+        if (trimmed.StartsWith("/", StringComparison.Ordinal))
+        {
+            return $"{baseUri.GetLeftPart(UriPartial.Authority)}{trimmed}";
+        }
+
+        return $"{baseUrl}/{trimmed}";
+    }
+
+    private static byte[] StampTestSignature(byte[] inputPdf)
+    {
+        using var readerStream = new MemoryStream(inputPdf);
+        using var outputStream = new MemoryStream();
+        using var reader = new PdfReader(readerStream);
+        using var writer = new PdfWriter(outputStream);
+        using var pdfDoc = new PdfDocument(reader, writer);
+
+        var font = PdfFontFactory.CreateFont(StandardFonts.HELVETICA_BOLD);
+        var pageCount = pdfDoc.GetNumberOfPages();
+        for (var i = 1; i <= pageCount; i++)
+        {
+            var page = pdfDoc.GetPage(i);
+            var pageSize = page.GetPageSize();
+            var canvas = new PdfCanvas(page.NewContentStreamAfter(), page.GetResources(), pdfDoc);
+            using var layout = new Canvas(canvas, pageSize);
+
+            var text = new Paragraph("TEST SIGNATURE")
+                .SetFont(font)
+                .SetFontSize(54)
+                .SetFontColor(new DeviceRgb(220, 38, 38))
+                .SetOpacity(0.18f);
+
+            layout.ShowTextAligned(
+                text,
+                pageSize.GetWidth() / 2,
+                pageSize.GetHeight() / 2,
+                i,
+                iText.Layout.Properties.TextAlignment.CENTER,
+                iText.Layout.Properties.VerticalAlignment.MIDDLE,
+                (float)(Math.PI / 4));
+        }
+
+        pdfDoc.Close();
+        return outputStream.ToArray();
+    }
+
+    private async Task ShowUsbAlertAsync(string message)
+    {
+        _usbAlertCts?.Cancel();
+        _usbAlertCts = new CancellationTokenSource();
+        var token = _usbAlertCts.Token;
+
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            UsbAlertText = message;
+            IsUsbAlertVisible = true;
+        });
+
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(4), token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
+        Application.Current.Dispatcher.Invoke(() =>
+        {
+            IsUsbAlertVisible = false;
+        });
+    }
+
+    [RelayCommand]
+    private async Task TestMinioUploadAsync()
+    {
+        if (SelectedDocument == null)
+        {
+            StatusText = "Sélectionnez un document";
+            return;
+        }
+
+        try
+        {
+            IsLoading = true;
+            StatusText = "Test MinIO: sélection du PDF local...";
+            S3StatusText = "Test...";
+
+            var dialog = new OpenFileDialog
+            {
+                Filter = "PDF (*.pdf)|*.pdf",
+                Title = "Sélectionner un PDF local (test MinIO)"
+            };
+
+            if (dialog.ShowDialog() != true)
+            {
+                StatusText = "Test MinIO: annulé";
+                S3StatusText = "Prêt";
+                return;
+            }
+
+            var localPdf = await File.ReadAllBytesAsync(dialog.FileName);
+
+            StatusText = "Test MinIO: génération du PDF de test...";
+            var stampedPdf = StampTestSignature(localPdf);
+
+            StatusText = "Test MinIO: connexion au backend...";
+
+            var backendBaseUrl = TryGetBackendBaseUrl(Settings.Default.ApiEndpoint);
+            backendBaseUrl ??= "http://10.2.22.210:18080";
+
+            using var backendClient = new HttpClient { BaseAddress = new Uri(backendBaseUrl) };
+            try
+            {
+                var (accessToken, _) = await _tokenStorageService.GetTokensAsync();
+                if (!string.IsNullOrWhiteSpace(accessToken))
+                {
+                    backendClient.DefaultRequestHeaders.Authorization =
+                        new AuthenticationHeaderValue("Bearer", accessToken);
+                }
+            }
+            catch
+            {
+            }
+
+            StatusText = "Test MinIO: upload vers backend (MinIO)...";
+
+            using var content = new MultipartFormDataContent();
+            var fileContent = new ByteArrayContent(stampedPdf);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
+            content.Add(fileContent, "file", Path.GetFileName(dialog.FileName));
+
+            using var response = await backendClient.PostAsync("/api/v1/test/minio/upload", content);
+            var responseText = await response.Content.ReadAsStringAsync();
+
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                StatusText = $"Test MinIO: endpoint test introuvable (404) sur {backendBaseUrl}. Fallback via /documents/{{id}}/signed...";
+
+                var pendingJson = await backendClient.GetStringAsync("/api/v1/documents/pending");
+                var pending = JsonSerializer.Deserialize<List<BackendPendingDocumentDto>>(pendingJson, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                }) ?? new List<BackendPendingDocumentDto>();
+
+                if (pending.Count == 0)
+                {
+                    S3StatusText = "Erreur";
+                    StatusText =
+                        $"Test MinIO: aucun document UNSIGNED/PENDING dans le backend ({backendBaseUrl}). " +
+                        "Le serveur ne semble pas avoir l'endpoint /api/v1/test/minio/upload déployé (404), " +
+                        "et /api/v1/documents/{id}/signed exige un document existant en DB. " +
+                        "Solution: déployer le backend avec l'endpoint de test, ou créer au moins un document en attente côté backend.";
+                    return;
+                }
+
+                var target = pending[0];
+                using var content2 = new MultipartFormDataContent();
+                var fileContent2 = new ByteArrayContent(stampedPdf);
+                fileContent2.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
+                content2.Add(fileContent2, "file", Path.GetFileName(dialog.FileName));
+
+                using var response2 = await backendClient.PostAsync($"/api/v1/documents/{target.Id}/signed", content2);
+                var responseText2 = await response2.Content.ReadAsStringAsync();
+                if (!response2.IsSuccessStatusCode)
+                {
+                    S3StatusText = "Erreur";
+                    StatusText = $"Test MinIO: upload échoué ({(int)response2.StatusCode} {response2.StatusCode}). {responseText2}";
+                    return;
+                }
+
+                S3StatusText = "Test OK";
+                StatusText = $"Test MinIO: upload OK (backend={backendBaseUrl}, documentId={target.Id}).";
+                return;
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                S3StatusText = "Erreur";
+                StatusText = $"Test MinIO: upload échoué ({(int)response.StatusCode} {response.StatusCode}). {responseText}";
+                return;
+            }
+
+            S3StatusText = "Test OK";
+            try
+            {
+                using var doc = JsonDocument.Parse(responseText);
+                if (doc.RootElement.TryGetProperty("objectPath", out var objectPathEl))
+                {
+                    StatusText = $"Test MinIO: upload OK. Object: {objectPathEl.GetString()}";
+                }
+                else
+                {
+                    StatusText = $"Test MinIO: upload OK (backend={backendBaseUrl})";
+                }
+            }
+            catch
+            {
+                StatusText = $"Test MinIO: upload OK (backend={backendBaseUrl})";
+            }
+        }
+        catch (Exception ex)
+        {
+            S3StatusText = "Erreur";
+            StatusText = $"Test MinIO: erreur ({ex.Message})";
+        }
+        finally
+        {
+            IsLoading = false;
+            OnPropertyChanged(nameof(CanSign));
+        }
+    }
     
     [RelayCommand]
-    private void SignDocument(DocumentDto? document)
+    private async Task SignDocument(DocumentDto? document)
     {
         if (document == null)
         {
@@ -370,7 +778,32 @@ public partial class MainViewModel : ObservableObject
             return;
         }
 
-        _navigationService.NavigateTo<SigningViewModel>(document);
+        if (!DongleStatus.IsDongleConnected)
+        {
+            await ShowUsbAlertAsync("USB hors ligne — veuillez connecter votre USB de signature");
+            return;
+        }
+
+        var viewModel = _serviceProvider.GetRequiredService<SigningViewModel>();
+        if (viewModel is INavigationAware aware)
+        {
+            aware.OnNavigatedTo(document);
+        }
+
+        var view = new SigningView
+        {
+            DataContext = viewModel,
+            Owner = Application.Current.MainWindow,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner
+        };
+
+        view.ShowDialog();
+
+        if (string.Equals(document.Status, "SIGNED", StringComparison.OrdinalIgnoreCase))
+        {
+            SelectedDocument = document;
+            OpenAfterSignature();
+        }
     }
     
     [RelayCommand]
@@ -414,6 +847,12 @@ public partial class MainViewModel : ObservableObject
         if (docs.Count == 0)
         {
             StatusText = "Aucun document sélectionné";
+            return;
+        }
+
+        if (!DongleStatus.IsDongleConnected)
+        {
+            await ShowUsbAlertAsync("USB hors ligne — veuillez connecter votre USB de signature");
             return;
         }
 
@@ -487,31 +926,58 @@ public partial class MainViewModel : ObservableObject
 
             byte[] bytes;
 
-            // Pour les documents FSJES, on dispose d'une URL directe vers le PDF (SourcePdfUrl)
-            if (!string.IsNullOrWhiteSpace(document.SourcePdfUrl))
+            using var httpClient = new HttpClient();
+            try
             {
-                using var httpClient = new HttpClient();
-
-                try
+                var (accessToken, _) = await _tokenStorageService.GetTokensAsync();
+                if (!string.IsNullOrWhiteSpace(accessToken))
                 {
-                    // Récupérer le token JWT stocké et l'envoyer en Authorization: Bearer
-                    var (accessToken, _) = await _tokenStorageService.GetTokensAsync();
-                    if (!string.IsNullOrWhiteSpace(accessToken))
-                    {
-                        httpClient.DefaultRequestHeaders.Authorization =
-                            new AuthenticationHeaderValue("Bearer", accessToken);
-                    }
+                    httpClient.DefaultRequestHeaders.Authorization =
+                        new AuthenticationHeaderValue("Bearer", accessToken);
                 }
-                catch
+            }
+            catch
+            {
+            }
+
+            if (signed && !string.IsNullOrWhiteSpace(document.Reference))
+            {
+                var baseUrl = AcadSign.Desktop.Properties.Settings.Default.ApiEndpoint;
+                var url = TryResolveFsjestUrl(baseUrl, $"/api/v1/admin/documents/{document.Reference}/download");
+                if (string.IsNullOrWhiteSpace(url))
                 {
-                    // En cas de problème de récupération du token, on tente quand même sans header
+                    throw new InvalidOperationException("ApiEndpoint is invalid; cannot build signed download URL.");
                 }
 
-                bytes = await httpClient.GetByteArrayAsync(document.SourcePdfUrl);
+                using var response = await httpClient.GetAsync(url, token);
+                if (!response.IsSuccessStatusCode)
+                {
+                    var body = await response.Content.ReadAsStringAsync(token);
+                    throw new InvalidOperationException($"Signed PDF download failed: HTTP {(int)response.StatusCode} {response.StatusCode}. Url={url}. Body={body}");
+                }
+
+                bytes = await response.Content.ReadAsByteArrayAsync(token);
+            }
+            else if (!signed && !string.IsNullOrWhiteSpace(document.SourcePdfUrl))
+            {
+                var baseUrl = AcadSign.Desktop.Properties.Settings.Default.ApiEndpoint;
+                var url = TryResolveFsjestUrl(baseUrl, document.SourcePdfUrl);
+                if (string.IsNullOrWhiteSpace(url))
+                {
+                    throw new InvalidOperationException("SourcePdfUrl is relative but ApiEndpoint is invalid; cannot resolve PDF URL.");
+                }
+
+                using var response = await httpClient.GetAsync(url, token);
+                if (!response.IsSuccessStatusCode)
+                {
+                    var body = await response.Content.ReadAsStringAsync(token);
+                    throw new InvalidOperationException($"PDF download failed: HTTP {(int)response.StatusCode} {response.StatusCode}. Url={url}. Body={body}");
+                }
+
+                bytes = await response.Content.ReadAsByteArrayAsync(token);
             }
             else
             {
-                // Fallback pour les anciens documents qui utilisent encore l'API historique
                 bytes = await _apiClient.DownloadDocumentAsync(document.Id);
             }
             token.ThrowIfCancellationRequested();
@@ -519,7 +985,7 @@ public partial class MainViewModel : ObservableObject
             var folder = Path.Combine(Path.GetTempPath(), "AcadSign", "previews");
             Directory.CreateDirectory(folder);
             var suffix = signed ? "signed" : "unsigned";
-            var filePath = Path.Combine(folder, $"{document.Id}_{suffix}.pdf");
+            var filePath = Path.Combine(folder, $"{document.Id}_{suffix}_{DateTime.UtcNow.Ticks}.pdf");
             await File.WriteAllBytesAsync(filePath, bytes, token);
 
             if (signed)
